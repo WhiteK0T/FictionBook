@@ -199,6 +199,13 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Покрыто `RenderersTest` (13 тестов: экранирование, форматирование, ссылки,
       ParagraphStyle, оба рендерера, все режимы `ResourceResolver`)
 
+### Тестирование
+- [x] Round-trip фикспоинт-тесты (`Fb2RoundTripTest`: write→read→write байт-в-байт +
+      сохранность метаданных, тела, annotation/history, бинарников)
+- [x] Property-based round-trip (`Fb2RoundTripPropertyTest`, jqwik): фикспоинт на
+      случайных DTO-деревьях; вскрыл баги порядка `<binary>` и склейки вложенного текста
+- [x] Юнит-тесты по компонентам (см. пометки «Покрыто …» в разделах выше)
+
 ## ⚠️ Частично реализовано
 
 - [ ] `<poem>`/`<date>` — дата стихотворения вычитывается, но в DTO не сохраняется
@@ -234,14 +241,7 @@ org.tehlab.whitek0t.fictionbook/
 ### Улучшения
 - [ ] Mutable Model — для удобного редактирования (вместо пересоздания immutable DTO)
 - [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
-- [ ] Полноценные тесты:
-  - [x] Round-trip тесты (`Fb2RoundTripTest`: фикспоинт write→read→write + сохранность
-        метаданных, тела, annotation/history, бинарников)
-  - [x] Property-based тесты (jqwik) — `Fb2RoundTripPropertyTest`: фикспоинт
-        write→read→write на случайных DTO-деревьях (секции/вложенность/инлайны/
-        ссылки/бинарники). Вскрыл два бага: нестабильный порядок `<binary>`
-        (`Map.copyOf` в `FictionBookDto` рандомизировал порядок) и неполную склейку
-        текста внутри вложенных инлайнов (из-за чего «плавало» экранирование `>`).
+- [ ] Недостающие тесты (round-trip и property-based уже есть — см. «Тестирование»):
   - [ ] Fuzz-тесты (случайные байты, битые XML)
   - [ ] Performance тесты (JMH бенчмарки) — плагин JMH не подключён
 
@@ -379,7 +379,8 @@ FictionBookDto clean = custom.sanitize(book);
 ## Высокий приоритет
 1. **Fb3Reader** — базовая поддержка FB3 (ZIP + XML)
 2. **Fb3Writer** — генерация FB3 с UUID-маппингом
-3. **Тесты** — property-based, fuzz (round-trip уже есть, см. `Fb2RoundTripTest`)
+3. **Тесты** — fuzz (битые байты/XML) и JMH-бенчмарки; round-trip и property-based
+   уже есть (`Fb2RoundTripTest`, `Fb2RoundTripPropertyTest`)
 
 ## Средний приоритет
 4. **FictionBookStreamer** — Streaming API для читалок
