@@ -106,8 +106,10 @@ org.tehlab.whitek0t.fictionbook/
 - [x] DTO модель (все Records)
 - [x] FictionBookFormat (auto-detect FB2/FB3 по magic bytes)
 - [x] FictionBookException иерархия с фабричными методами
-- [x] EncodingDetector (BOM → XML declaration → Mozilla detector)
-- [x] ByteCountingInputStream
+- [x] EncodingDetector (`detect(Path)`: BOM → XML declaration → Mozilla
+      juniversalchardet → fallback UTF-8; BOM-ы UTF-8 / UTF-16LE / UTF-16BE)
+- [x] EncodingAwareInputStream (читает в исходной кодировке, отдаёт UTF-8, обрезает BOM)
+- [x] ByteCountingInputStream (трекинг byte offset для AnchorIndex)
 
 ### FB2 Reader
 - [x] Fb2Reader (один проход, гибридный Jackson+StAX)
@@ -182,6 +184,10 @@ org.tehlab.whitek0t.fictionbook/
       (`Poem` не хранит поле date).
 - [ ] `text-author` в poem/cite/epigraph хранится как plain `String` —
       форматирование внутри автора схлопывается в текст.
+- [ ] Encoding: нет юнит-тестов на `EncodingDetector` / `EncodingAwareInputStream`
+      (BOM, XML declaration, кириллические кодировки) — проверяется только косвенно.
+- [ ] `EncodingAwareInputStream` декодирует исходную кодировку и тут же
+      перекодирует в UTF-8 (двойная транскодировка) — кандидат на оптимизацию.
 
 ## ⏳ В планах (не начато)
 
