@@ -8,11 +8,15 @@ group = "org.tehlab.whitek0t"
 version = "1.0-SNAPSHOT"
 
 java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21)) // Целимся в Java 21
-    }
     withSourcesJar()
     withJavadocJar()
+}
+
+// Билд идёт на любом установленном JDK >= 21 (toolchain намеренно не используем,
+// чтобы не привязываться к одной конкретной версии). release = 21 гарантирует,
+// что артефакты остаются совместимы с Java 21 и не используют API новее 21.
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
 }
 
 repositories {
