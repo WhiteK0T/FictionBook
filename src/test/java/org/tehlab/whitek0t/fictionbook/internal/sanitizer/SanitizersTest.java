@@ -7,6 +7,7 @@ import org.tehlab.whitek0t.fictionbook.dto.Resource;
 import org.tehlab.whitek0t.fictionbook.dto.block.Paragraph;
 import org.tehlab.whitek0t.fictionbook.dto.block.Section;
 import org.tehlab.whitek0t.fictionbook.dto.inline.ImageRef;
+import org.tehlab.whitek0t.fictionbook.dto.inline.Link;
 import org.tehlab.whitek0t.fictionbook.dto.inline.Strong;
 import org.tehlab.whitek0t.fictionbook.dto.inline.Text;
 
@@ -203,6 +204,81 @@ class SanitizersTest {
 
         // Повторный запуск не должен ничего менять
         assertThat(twice).usingRecursiveComparison().isEqualTo(once);
+    }
+
+    @Test
+    void orphanedLinkCleanerShouldKeepResolvableInternalLink() {
+        // Ссылка #ch1 указывает на секцию с id="ch1" — должна резолвиться.
+        Link link = new Link("#ch1", null, List.of(new Text("see chapter")));
+        Section section = new Section("ch1", List.of(),
+                List.of(new Paragraph(List.of(link))),
+                List.of(), Map.of());
+
+        FictionBookDto book = createBook(section);
+        FictionBookDto clean = new OrphanedLinkCleaner().sanitize(book);
+
+        Paragraph p = (Paragraph) clean.bodies().get(0).sections().get(0).content().get(0);
+        assertThat(p.elements()).containsExactly(link);
+    }
+
+    @Test
+    void orphanedLinkCleanerShouldMarkBrokenLinkWithEmptyText() {
+        // Битая ссылка без текста — подставляется маркер [broken: ...].
+        Section section = new Section("ch1", List.of(),
+                List.of(new Paragraph(List.of(new Link("#missing", null, List.of())))),
+                List.of(), Map.of());
+
+        FictionBookDto book = createBook(section);
+        FictionBookDto clean = new OrphanedLinkCleaner().sanitize(book);
+
+        Paragraph p = (Paragraph) clean.bodies().get(0).sections().get(0).content().get(0);
+        assertThat(p.elements()).containsExactly(
+                new Link("#missing", null, List.of(new Text("[broken: #missing]"))));
+    }
+
+    @Test
+    void orphanedLinkCleanerShouldKeepBrokenLinkTextWhenNotEmpty() {
+        // Битая ссылка, но с текстом — текст не теряем, ссылку оставляем как есть.
+        Link link = new Link("#missing", null, List.of(new Text("click here")));
+        Section section = new Section("ch1", List.of(),
+                List.of(new Paragraph(List.of(link))),
+                List.of(), Map.of());
+
+        FictionBookDto book = createBook(section);
+        FictionBookDto clean = new OrphanedLinkCleaner().sanitize(book);
+
+        Paragraph p = (Paragraph) clean.bodies().get(0).sections().get(0).content().get(0);
+        assertThat(p.elements()).containsExactly(link);
+    }
+
+    @Test
+    void orphanedLinkCleanerShouldIgnoreExternalLinks() {
+        // Внешняя ссылка (без #) не трогается, даже если текст пустой.
+        Link link = new Link("https://example.com", null, List.of());
+        Section section = new Section("ch1", List.of(),
+                List.of(new Paragraph(List.of(link))),
+                List.of(), Map.of());
+
+        FictionBookDto book = createBook(section);
+        FictionBookDto clean = new OrphanedLinkCleaner().sanitize(book);
+
+        Paragraph p = (Paragraph) clean.bodies().get(0).sections().get(0).content().get(0);
+        assertThat(p.elements()).containsExactly(link);
+    }
+
+    @Test
+    void orphanedLinkCleanerShouldIgnoreBlankHref() {
+        // Пустой href не считается ссылкой — оставляем без изменений.
+        Link link = new Link("", null, List.of());
+        Section section = new Section("ch1", List.of(),
+                List.of(new Paragraph(List.of(link))),
+                List.of(), Map.of());
+
+        FictionBookDto book = createBook(section);
+        FictionBookDto clean = new OrphanedLinkCleaner().sanitize(book);
+
+        Paragraph p = (Paragraph) clean.bodies().get(0).sections().get(0).content().get(0);
+        assertThat(p.elements()).containsExactly(link);
     }
 
     private FictionBookDto createBook(Section section) {

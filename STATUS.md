@@ -152,7 +152,9 @@ org.tehlab.whitek0t.fictionbook/
 ### Санитайзеры
 - [x] Sanitizer интерфейс
 - [x] SanitizerPipeline (Chain of Responsibility)
-- [x] FictionBookDtoTransformer (рекурсивный обход immutable DTO)
+- [x] FictionBookDtoTransformer (рекурсивный обход immutable DTO; контейнерные
+      инлайны, включая `Link`, тоже проходят через `onInlineElement` — раньше колбэк
+      видел только листья, из-за чего `OrphanedLinkCleaner` был no-op)
 - [x] EmptyParagraphCleaner
 - [x] EmptySectionCleaner
 - [x] TextNodeMerger (склейка разбитых Text-нод)
@@ -165,10 +167,9 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Отказоустойчивость пайплайна: санитайзер, вернувший `null` или бросивший
       исключение, логируется и пропускается — сохраняется предыдущее состояние DTO.
 - [x] Авто-запуск пайплайна в `Fb2Writer` перед записью (forgiving read → strict write).
-- [x] Покрыто `SanitizersTest` (10 тестов, включая проверку идемпотентности и
-      сборки через `SanitizerPipeline`).
-  - [ ] `OrphanedLinkCleaner` — единственный санитайзер без прямого юнит-теста
-        (косвенно прогоняется в pipeline-тесте).
+- [x] Покрыто `SanitizersTest` (15 тестов, включая проверку идемпотентности,
+      сборки через `SanitizerPipeline` и все ветки `OrphanedLinkCleaner`:
+      резолвящаяся/битая/внешняя ссылка, маркировка битой без текста).
 
 ### AnchorIndex
 - [x] AnchorIndex (immutable, на базе `Map<String, AnchorInfo>`):

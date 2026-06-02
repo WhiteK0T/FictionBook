@@ -162,23 +162,27 @@ public class FictionBookDtoTransformer {
     private InlineElement transformInline(InlineElement inline) {
         if (inline == null) return null;
 
-        // Контейнеры с вложенными элементами — рекурсивно
+        // Сначала рекурсивно перестраиваем контейнеры по их детям,
+        // затем (как и для листьев) прогоняем сам узел через трансформер —
+        // чтобы onInlineElement видел и контейнеры (например, Link), а не только листья.
+        InlineElement rebuilt;
         if (inline instanceof Strong s) {
-            return new Strong(transformInlineList(s.elements()));
+            rebuilt = new Strong(transformInlineList(s.elements()));
         } else if (inline instanceof Emphasis e) {
-            return new Emphasis(transformInlineList(e.elements()));
+            rebuilt = new Emphasis(transformInlineList(e.elements()));
         } else if (inline instanceof Strikethrough s) {
-            return new Strikethrough(transformInlineList(s.elements()));
+            rebuilt = new Strikethrough(transformInlineList(s.elements()));
         } else if (inline instanceof Sub s) {
-            return new Sub(transformInlineList(s.elements()));
+            rebuilt = new Sub(transformInlineList(s.elements()));
         } else if (inline instanceof Sup s) {
-            return new Sup(transformInlineList(s.elements()));
+            rebuilt = new Sup(transformInlineList(s.elements()));
         } else if (inline instanceof Link l) {
-            return new Link(l.href(), l.type(), transformInlineList(l.elements()));
+            rebuilt = new Link(l.href(), l.type(), transformInlineList(l.elements()));
+        } else {
+            rebuilt = inline;
         }
 
-        // Листовые элементы — применяем трансформер
-        return inlineTransformer.apply(inline);
+        return inlineTransformer.apply(rebuilt);
     }
 
     private List<InlineElement> transformInlineList(List<InlineElement> elements) {
