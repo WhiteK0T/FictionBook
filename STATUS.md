@@ -128,9 +128,15 @@ org.tehlab.whitek0t.fictionbook/
 
 ### FB2 Writer
 - [x] Fb2Writer (StAX XMLStreamWriter)
-- [x] Стриминг base64 чанками (не загружает в RAM)
-- [x] Pretty print
-- [x] Авто-санитизация перед записью
+- [x] Полный охват записи: `<description>` (title/document/publish-info, авторы),
+      все блоки (`p`, `subtitle`, `empty-line`, `poem`/`stanza`/`v`, `table`/`tr`/`td`,
+      `cite`, `epigraph`) и инлайны (strong/emphasis/strikethrough/sub/sup, `a`, `image`)
+- [x] UTF-8: явная кодировка в XML declaration и при записи
+- [x] xlink namespace для ссылок/картинок (`l:href` через `XLINK_NS`)
+- [x] Стриминг base64 чанками по 3 КБ (кратно 3 — чистый base64, не грузит картинку в RAM)
+- [x] Pretty print (настраивается через `setPrettyPrint`)
+- [x] Авто-санитизация перед записью (пайплайн настраивается через `setSanitizerPipeline`)
+- [x] Покрыто `Fb2WriterTest` (19 тестов) + round-trip фикспоинтом (`Fb2RoundTripTest`)
 
 ### Санитайзеры
 - [x] Sanitizer интерфейс
