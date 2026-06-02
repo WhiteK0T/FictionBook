@@ -1,12 +1,12 @@
 package org.tehlab.whitek0t.fictionbook.internal.roundtrip;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.tehlab.whitek0t.fictionbook.dto.BodyDto;
 import org.tehlab.whitek0t.fictionbook.dto.FictionBookDto;
 import org.tehlab.whitek0t.fictionbook.dto.Resource;
+import org.tehlab.whitek0t.fictionbook.dto.block.BlockElement;
 import org.tehlab.whitek0t.fictionbook.dto.block.EmptyLine;
 import org.tehlab.whitek0t.fictionbook.dto.block.Paragraph;
 import org.tehlab.whitek0t.fictionbook.dto.block.Section;
@@ -72,8 +72,8 @@ class Fb2RoundTripTest {
     }
 
     /**
-     * Заведомо «чистая» книга с разнообразным, но надёжно поддерживаемым контентом:
-     * метаданные, вложенные секции, форматирование, ссылки, sub/sup, тело примечаний,
+     * Заведомо «чистая» книга с разнообразным контентом: метаданные, annotation,
+     * history, вложенные секции, форматирование, ссылки, sub/sup, тело примечаний,
      * бинарный ресурс. Намеренно без пустых/мусорных узлов, чтобы санитайзеры
      * не вносили правок на первом проходе.
      */
@@ -86,9 +86,7 @@ class Fb2RoundTripTest {
                         ),
                         List.of("prose_classic", "prose_history"),
                         "Война и мир",
-                        // ВНИМАНИЕ: annotation сознательно пуста — её round-trip сейчас сломан
-                        // (Jackson @JacksonXmlText не захватывает вложенный <p>), см. annotationRoundTripIsKnownGap().
-                        List.of(),
+                        List.of(p("Краткая аннотация книги.")),
                         "ru", "fr",
                         new Sequence("Великие романы", 4),
                         List.of()
@@ -101,8 +99,7 @@ class Fb2RoundTripTest {
                         "OCR Team",
                         "doc-id-42",
                         "1.3",
-                        // history тоже сознательно пуст — общий с annotation баг @JacksonXmlText.
-                        List.of()
+                        List.of("Первая версия", "Вторая версия")
                 ),
                 new PublishInfo(
                         "Полное собрание сочинений",
@@ -215,31 +212,34 @@ class Fb2RoundTripTest {
     }
 
     /**
-     * ИЗВЕСТНЫЙ БАГ (round-trip ловит его): {@code <annotation>} и {@code <history>}
-     * записываются, но не читаются обратно. Причина — {@code @JacksonXmlText} в
-     * {@code Fb2AnnotationJax}/{@code Fb2HistoryJax} захватывает только прямой текст
-     * элемента, но не вложенную разметку {@code <p>…</p>}, поэтому при чтении
-     * содержимое теряется.
-     * <p>
-     * Тест намеренно отключён. Снять {@code @Disabled} после фикса ридера —
-     * тогда он станет защитой от регрессии.
+     * Регрессионная защита: {@code <annotation>} и {@code <history>} переживают
+     * round-trip. Раньше они записывались, но не читались обратно — {@code @JacksonXmlText}
+     * в {@code Fb2AnnotationJax}/{@code Fb2HistoryJax} не захватывает вложенную разметку
+     * {@code <p>…</p>}. Починено через {@code MixedContentCapture}, который вытаскивает
+     * сырой внутренний XML этих блоков из поддерева {@code <description>}.
      */
     @Test
-    @Disabled("Известный баг ридера: annotation/history не читаются (Jackson @JacksonXmlText "
-            + "не захватывает вложенный <p>). Включить после фикса.")
-    @DisplayName("KNOWN GAP: annotation и history переживают round-trip")
-    void annotationAndHistoryRoundTripIsKnownGap() throws Exception {
+    @DisplayName("annotation и history переживают round-trip")
+    void annotationAndHistorySurviveRoundTrip() throws Exception {
         Description withMixedContent = new Description(
                 new TitleInfo(
                         List.of(new Author("Лев", null, "Толстой")),
                         List.of("prose_classic"),
                         "Книга",
-                        List.of(p("Аннотация с текстом.")),  // ← теряется при чтении
+                        // annotation с форматированием и ссылкой (l:href) — проверяем,
+                        // что namespace-unaware сериализация атрибута с префиксом выживает.
+                        List.of(new Paragraph(List.of(
+                                new Text("Аннотация с "),
+                                new Strong(List.of(new Text("жирным"))),
+                                new Text(" и "),
+                                new Link("#ref", null, List.of(new Text("ссылкой"))),
+                                new Text(".")
+                        ))),
                         "ru", null, null, List.of()
                 ),
                 new DocumentInfo(
                         List.of(), null, null, null, null, "id-1", "1.0",
-                        List.of("Первая версия", "Вторая версия")  // ← теряется при чтении
+                        List.of("Первая версия", "Вторая версия")
                 ),
                 null
         );
@@ -250,9 +250,23 @@ class Fb2RoundTripTest {
                 Map.of()
         );
 
+        // (1) контент реально доезжает обратно в DTO
+        FictionBookDto reread = read(write(book));
+
+        List<BlockElement> annotation = reread.description().titleInfo().annotation();
+        assertThat(annotation).hasSize(1);
+        Paragraph annotationPara = (Paragraph) annotation.get(0);
+        assertThat(annotationPara.elements()).hasAtLeastOneElementOfType(Strong.class);
+        Link annotationLink = (Link) annotationPara.elements().stream()
+                .filter(Link.class::isInstance).findFirst().orElseThrow();
+        assertThat(annotationLink.href()).isEqualTo("#ref");
+
+        assertThat(reread.description().documentInfo().history())
+                .containsExactly("Первая версия", "Вторая версия");
+
+        // (2) и round-trip стабилен (write → read → write — байт-в-байт)
         byte[] firstPass = write(book);
         byte[] secondPass = write(read(firstPass));
-
         assertThat(new String(secondPass)).isEqualTo(new String(firstPass));
     }
 

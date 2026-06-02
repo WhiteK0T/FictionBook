@@ -15,7 +15,12 @@ import org.tehlab.whitek0t.fictionbook.encoding.EncodingDetector;
 import org.tehlab.whitek0t.fictionbook.exception.FictionBookException;
 import org.tehlab.whitek0t.fictionbook.exception.InvalidFormatException;
 import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.DescriptionMapper;
+import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.Fb2AnnotationJax;
 import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.Fb2DescriptionJax;
+import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.Fb2DocumentInfoJax;
+import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.Fb2HistoryJax;
+import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.Fb2TitleInfoJax;
+import org.tehlab.whitek0t.fictionbook.internal.parser.jackson.MixedContentCapture;
 import org.tehlab.whitek0t.fictionbook.internal.parser.stax.Fb2BlockParser;
 import org.tehlab.whitek0t.fictionbook.internal.parser.stax.Fb2BodyParser;
 
@@ -25,6 +30,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.BufferedInputStream;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
@@ -173,11 +179,59 @@ public class Fb2Reader {
                                         DescriptionMapper descriptionMapper,
                                         String fileName) throws FictionBookException {
         try {
-            Fb2DescriptionJax jax = jacksonMapper.readValue(xml, Fb2DescriptionJax.class);
+            // Сериализуем всё поддерево <description> в строку (namespace-unaware),
+            // чтобы (1) распарсить структурные поля Jackson'ом как и раньше и
+            // (2) отдельно вытащить mixed content annotation/history, который
+            // @JacksonXmlText захватить не способен (теряет вложенные <p>).
+            String descXml = MixedContentCapture.serializeElement(xml);
+
+            XMLStreamReader descReader = staxFactory.createXMLStreamReader(new StringReader(descXml));
+            Fb2DescriptionJax jax;
+            try {
+                jax = jacksonMapper.readValue(descReader, Fb2DescriptionJax.class);
+            } finally {
+                descReader.close();
+            }
+
+            injectMixedContent(jax, descXml);
+
             return descriptionMapper.toDto(jax);
         } catch (Exception e) {
             throw new FictionBookException(
                     "Failed to parse <description> in " + fileName, e);
+        }
+    }
+
+    /**
+     * Достаёт сырой внутренний XML {@code <annotation>}/{@code <history>} из
+     * поддерева description и кладёт его в {@code rawXml} соответствующих Jax-объектов,
+     * чтобы дальше сработал штатный путь {@code DescriptionMapper → parseXmlFragment}.
+     */
+    private void injectMixedContent(Fb2DescriptionJax jax, String descXml) throws XMLStreamException {
+        if (jax == null) {
+            return;
+        }
+
+        String annotationXml = MixedContentCapture.extractInnerXml(descXml, staxFactory, "annotation");
+        if (annotationXml != null) {
+            if (jax.titleInfo == null) {
+                jax.titleInfo = new Fb2TitleInfoJax();
+            }
+            if (jax.titleInfo.annotation == null) {
+                jax.titleInfo.annotation = new Fb2AnnotationJax();
+            }
+            jax.titleInfo.annotation.rawXml = annotationXml;
+        }
+
+        String historyXml = MixedContentCapture.extractInnerXml(descXml, staxFactory, "history");
+        if (historyXml != null) {
+            if (jax.documentInfo == null) {
+                jax.documentInfo = new Fb2DocumentInfoJax();
+            }
+            if (jax.documentInfo.history == null) {
+                jax.documentInfo.history = new Fb2HistoryJax();
+            }
+            jax.documentInfo.history.rawXml = historyXml;
         }
     }
 
