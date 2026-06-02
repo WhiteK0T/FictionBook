@@ -142,6 +142,16 @@ org.tehlab.whitek0t.fictionbook/
 - [x] OrphanedImageCleaner (проверка ссылок на картинки)
 - [x] OrphanedLinkCleaner (проверка внутренних ссылок)
 - [x] AttributeNormalizer (NCName compliance для id)
+- [x] `SanitizerPipeline.standard()` — канонический порядок (важен!):
+      EmptyParagraphCleaner → EmptySectionCleaner → TextNodeMerger →
+      OrphanedImageCleaner → OrphanedLinkCleaner → AttributeNormalizer.
+- [x] Отказоустойчивость пайплайна: санитайзер, вернувший `null` или бросивший
+      исключение, логируется и пропускается — сохраняется предыдущее состояние DTO.
+- [x] Авто-запуск пайплайна в `Fb2Writer` перед записью (forgiving read → strict write).
+- [x] Покрыто `SanitizersTest` (10 тестов, включая проверку идемпотентности и
+      сборки через `SanitizerPipeline`).
+  - [ ] `OrphanedLinkCleaner` — единственный санитайзер без прямого юнит-теста
+        (косвенно прогоняется в pipeline-тесте).
 
 ### AnchorIndex
 - [x] AnchorIndex (immutable)
