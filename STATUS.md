@@ -103,17 +103,24 @@ org.tehlab.whitek0t.fictionbook/
 ## ✅ Полностью реализовано
 
 ### Core
-- [x] DTO модель (все Records)
-- [x] FictionBookFormat (auto-detect FB2/FB3 по magic bytes)
-- [x] FictionBookException иерархия с фабричными методами
+- [x] DTO модель — все immutable Records (3 слоя: `description/`, `block/`, `inline/`)
+- [x] FictionBookIO — единая точка входа (`read`/`write`, switch по формату;
+      FB3-ветки бросают `UnsupportedOperationException`)
+- [x] FictionBookFormat — `detect()` по magic bytes (ZIP→FB3, XML→FB2) с fallback
+      на расширение (`fromPath`)
+- [x] FictionBookException + InvalidFormatException с богатым набором фабричных
+      методов (`missingElement`, `missingAttribute`, `invalidAttributeValue`,
+      `brokenReference`, `brokenArchive`, `missingFb3Entry`, `validationError`, …)
 - [x] EncodingDetector (`detect(Path)`: BOM → XML declaration → Mozilla
       juniversalchardet → fallback UTF-8; BOM-ы UTF-8 / UTF-16LE / UTF-16BE)
 - [x] EncodingAwareInputStream (читает в исходной кодировке, отдаёт UTF-8, обрезает BOM)
 - [x] ByteCountingInputStream (трекинг byte offset для AnchorIndex)
 
 ### FB2 Reader
-- [x] Fb2Reader (один проход, гибридный Jackson+StAX)
-- [x] Jackson-маппинг для `<description>` (Jax-классы + DescriptionMapper)
+- [x] Fb2Reader (один проход, гибридный Jackson+StAX), прощающий режим —
+      неизвестные теги пропускаются, не ломая разбор
+- [x] Jackson-маппинг для `<description>` (Jax-классы + DescriptionMapper): авторы,
+      жанры, sequence, coverpage, title-info, document-info, publish-info
 - [x] Mixed content `<annotation>` / `<history>` (раньше терялись при чтении —
       `@JacksonXmlText` не захватывает вложенные `<p>`). Чинит `MixedContentCapture`:
       сырой внутренний XML вытаскивается из поддерева `<description>` и подаётся в
@@ -127,6 +134,8 @@ org.tehlab.whitek0t.fictionbook/
 - [x] NodeBuilder'ы: Paragraph, Inline, Link, Image, TableCell, Verse, IgnoreBuilder
 - [x] Fb2BodyParser (рекурсивный обход секций)
 - [x] Eager-загрузка бинарников (base64 decode)
+- [x] Покрыто `Fb2ReaderTest` (27 тестов: `@Nested` Basic / Description / Body,
+      несколько `<body>` main+notes), `AuthorTest`, `NodeBuildersTest`
 
 ### FB2 Writer
 - [x] Fb2Writer (StAX XMLStreamWriter)
@@ -204,7 +213,9 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] Fb3Writer — `Fb3ExportContext` с UUID-маппингом, генерация `relations.xml`, `[Content_Types].xml`, `core.xml`
 
 ### Streaming API
-- [ ] FictionBookStreamer — чтение поглавно с минимальным RAM
+- [ ] FictionBookStreamer — интерфейс в `api/` уже есть, но `open()` возвращает
+      заглушку: все методы (`readDescription`, `readNextSection`, `getResource`,
+      `buildAnchorIndex`) отдают `null`. Реальная реализация — TODO.
 - [ ] AnchorIndex с byte offset для seek в Streaming режиме
 - [ ] Lazy-загрузка бинарников через RandomAccessFile (опционально)
 
