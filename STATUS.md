@@ -112,7 +112,16 @@ org.tehlab.whitek0t.fictionbook/
 ### FB2 Reader
 - [x] Fb2Reader (один проход, гибридный Jackson+StAX)
 - [x] Jackson-маппинг для `<description>` (Jax-классы + DescriptionMapper)
+- [x] Mixed content `<annotation>` / `<history>` (раньше терялись при чтении —
+      `@JacksonXmlText` не захватывает вложенные `<p>`). Чинит `MixedContentCapture`:
+      сырой внутренний XML вытаскивается из поддерева `<description>` и подаётся в
+      штатный `parseXmlFragment`. Покрыто round-trip фикспоинт-тестом (write→read→write).
 - [x] StAX-парсинг для `<body>` (стек билдеров)
+- [x] Fb2BlockParser — все блочные элементы: `<p>`, `<empty-line>`, `<subtitle>`,
+      `<poem>` (со строфами `<stanza>`/`<v>`, title, epigraph, text-author),
+      `<table>` (со строками `<tr>` и ячейками `<td>`/`<th>`, авто-обёртка «грязного»
+      текста через `TableCellBuilder`), `<cite>` и `<epigraph>` (с `id` и `text-author`).
+      Покрыто `Fb2BlockParserTest` (отдельный `@Nested` на каждый элемент).
 - [x] NodeBuilder'ы: Paragraph, Inline, Link, Image, TableCell, Verse, IgnoreBuilder
 - [x] Fb2BodyParser (рекурсивный обход секций)
 - [x] Eager-загрузка бинарников (base64 decode)
@@ -150,11 +159,10 @@ org.tehlab.whitek0t.fictionbook/
 
 ## ⚠️ Частично реализовано
 
-- [ ] Fb2BlockParser — базовый работает, но TODO:
-  - Полноценный `parsePoem()` (со строфами и стихами)
-  - Полноценный `parseTable()` (с TableCellBuilder и auto-wrap)
-  - Полноценный `parseCite()` (с author и id)
-  - Полноценный `parseEpigraph()` (с author и id)
+- [ ] `<poem>`/`<date>` — дата стихотворения вычитывается, но в DTO не сохраняется
+      (`Poem` не хранит поле date).
+- [ ] `text-author` в poem/cite/epigraph хранится как plain `String` —
+      форматирование внутри автора схлопывается в текст.
 
 ## ⏳ В планах (не начато)
 
@@ -177,7 +185,8 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] Mutable Model — для удобного редактирования (вместо пересоздания immutable DTO)
 - [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
 - [ ] Полноценные тесты:
-  - Round-trip тесты (чтение → запись → чтение → сравнение)
+  - [x] Round-trip тесты (`Fb2RoundTripTest`: фикспоинт write→read→write + сохранность
+        метаданных, тела, annotation/history, бинарников)
   - Property-based тесты (jqwik)
   - Fuzz-тесты (случайные байты, битые XML)
   - Performance тесты (JMH бенчмарки)
@@ -314,20 +323,19 @@ FictionBookDto clean = custom.sanitize(book);
 # Следующие шаги (приоритеты)
 
 ## Высокий приоритет
-1. **Завершить Fb2BlockParser** — реализовать `parsePoem()`, `parseTable()`, `parseCite()`, `parseEpigraph()`
-2. **Fb3Reader** — базовая поддержка FB3 (ZIP + XML)
-3. **Fb3Writer** — генерация FB3 с UUID-маппингом
-4. **Тесты** — round-trip, property-based, fuzz
+1. **Fb3Reader** — базовая поддержка FB3 (ZIP + XML)
+2. **Fb3Writer** — генерация FB3 с UUID-маппингом
+3. **Тесты** — property-based, fuzz (round-trip уже есть, см. `Fb2RoundTripTest`)
 
 ## Средний приоритет
-5. **FictionBookStreamer** — Streaming API для читалок
-6. **Mutable Model** — для удобного редактирования
-7. **JavaFxRenderer** — для настольных читалок
+4. **FictionBookStreamer** — Streaming API для читалок
+5. **Mutable Model** — для удобного редактирования
+6. **JavaFxRenderer** — для настольных читалок
 
 ## Низкий приоритет
-8. **PDF/EPUB рендереры**
-9. **CLI-утилита**
-10. **CSS в FB3**
+7. **PDF/EPUB рендереры**
+8. **CLI-утилита**
+9. **CSS в FB3**
 
 ---
 

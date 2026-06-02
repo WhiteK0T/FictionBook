@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Java 21 library for reading, writing, sanitizing, and rendering FictionBook e-book files (FB2 today; FB3 planned). The core idea: parse any (often "dirty") FB2 into one immutable domain model (`FictionBookDto`), then render or write it back out in a strictly-valid form. There is no application entry point — this is a library consumed via the `api/` facades.
 
-Note: most of the design docs in the repo root are in Russian (`Архитектура проекта.md` = architecture, `Примеры использования.md` = usage cookbook, `claude.md` = full status/ADR log, `Changelog.md`). `claude.md` (lowercase) is the authoritative living status document — check it for what is done vs. planned before assuming a feature exists.
+Note: most of the design docs in the repo root are in Russian (`Архитектура проекта.md` = architecture, `Примеры использования.md` = usage cookbook, `STATUS.md` = full status/ADR log, `Changelog.md`). `STATUS.md` is the authoritative living status document — check it for what is done vs. planned before assuming a feature exists.
 
 ## Commands
 
