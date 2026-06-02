@@ -62,5 +62,5 @@ The book "plays itself" onto a renderer: `BookPlayer` traverses the DTO and emit
 - **Java 21**, immutable records throughout, sealed-style element hierarchies (`BlockElement`, `InlineElement`). Prefer rebuilding DTOs via transformer helpers over introducing mutability.
 - **`internal/` is private implementation** — keep new public surface in `api/`, `dto/`, and `render/`.
 - **Logging** uses SLF4J API only (no bound implementation shipped); tests use `slf4j-simple`.
-- **Tests**: JUnit 5 + AssertJ, with **jqwik** for property-based tests (`@Property`). Tests are organized with nested `@Nested` classes by feature. The `.jqwik-database` file is jqwik's failure-replay store.
+- **Tests**: JUnit 5 + AssertJ. Tests are organized with nested `@Nested` classes by feature. The **jqwik** dependency is wired in `build.gradle.kts` for property-based tests (`@Property`), but no `@Property` tests have been written yet; the `.jqwik-database` file is jqwik's failure-replay store.
 - Errors surface as `FictionBookException` / `InvalidFormatException` (use the factory methods on the exception types).

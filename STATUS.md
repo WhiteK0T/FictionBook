@@ -231,9 +231,10 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] Полноценные тесты:
   - [x] Round-trip тесты (`Fb2RoundTripTest`: фикспоинт write→read→write + сохранность
         метаданных, тела, annotation/history, бинарников)
-  - Property-based тесты (jqwik)
-  - Fuzz-тесты (случайные байты, битые XML)
-  - Performance тесты (JMH бенчмарки)
+  - [ ] Property-based тесты (jqwik) — зависимость подключена в `build.gradle.kts`,
+        но ни одного `@Property`-теста пока не написано
+  - [ ] Fuzz-тесты (случайные байты, битые XML)
+  - [ ] Performance тесты (JMH бенчмарки) — плагин JMH не подключён
 
 ### Инфраструктура
 - [ ] CLI-утилита — конвертер fb2↔fb3↔html
