@@ -1,0 +1,100 @@
+src/main/java/org/tehlab/whitek0t/fictionbook/
+├── api/                                # 📤 ПУБЛИЧНЫЙ API
+│   ├── FictionBook.java                # Фасад (чтение/запись)
+│   ├── FictionBookFormat.java          # Enum: FB2, FB3
+│   └── FictionBookStreamer.java        # Streaming API для читалок
+│
+├── dto/                                # 📦 IMMUTABLE DTO (Java Records)
+│   ├── FictionBookDto.java             # Корневой DTO книги
+│   ├── BodyDto.java
+│   ├── Resource.java                   # DTO ресурса (картинки)
+│   ├── ResourceDataProvider.java
+│   ├── description/                    # Метаданные
+│   │   ├── Description.java
+│   │   ├── TitleInfo.java
+│   │   ├── DocumentInfo.java
+│   │   ├── PublishInfo.java
+│   │   ├── Author.java
+│   │   └── Sequence.java
+│   ├── block/                          # Блочные элементы
+│   │   ├── BlockElement.java           # Marker interface
+│   │   ├── Section.java
+│   │   ├── Paragraph.java
+│   │   ├── EmptyLine.java
+│   │   ├── Poem.java
+│   │   ├── Stanza.java
+│   │   ├── Verse.java
+│   │   ├── Table.java
+│   │   ├── TableRow.java
+│   │   ├── TableCell.java
+│   │   ├── Cite.java
+│   │   └── Epigraph.java
+│   └── inline/                         # Строчные элементы
+│       ├── InlineElement.java          # Marker interface
+│       ├── Text.java
+│       ├── Strong.java
+│       ├── Emphasis.java
+│       ├── Strikethrough.java
+│       ├── Sub.java
+│       ├── Sup.java
+│       ├── Link.java
+│       └── ImageRef.java
+│
+├── model/                              # ✏️ MUTABLE MODEL (для редактирования)
+│   └── ...
+│
+├── render/                             # 🎨 РЕНДЕРИНГ (Event-driven)
+│   ├── FictionBookRenderer.java        # Интерфейс рендерера
+│   ├── BookPlayer.java                 # "Проигрыватель" книги на рендерер
+│   ├── ParagraphStyle.java             # Enum стилей параграфа
+│   └── impl/                           # Готовые реализации
+│       ├── HtmlRenderer.java
+│       └── PlainTextRenderer.java
+│
+├── internal/                           # 🔒 ВНУТРЕННЯЯ КУХНЯ
+│   ├── parser/
+│   │   ├── jackson/
+│   │   │   ├── Fb2DescriptionJax.java
+│   │   │   ├── Fb2TitleInfoJax.java
+│   │   │   ├── Fb2AuthorJax.java
+│   │   │   ├── Fb2SequenceJax.java
+│   │   │   ├── Fb2AnnotationJax.java
+│   │   │   ├── Fb2CoverpageJax.java
+│   │   │   ├── Fb2ImageRefJax.java
+│   │   │   ├── Fb2DocumentInfoJax.java
+│   │   │   ├── Fb2HistoryJax.java
+│   │   │   ├── Fb2PublishInfoJax.java
+│   │   │   └── DescriptionMapper.java
+│   │   └── stax/
+│   │       ├── NodeBuilder.java
+│   │       ├── ParagraphBuilder.java
+│   │       ├── TableCellBuilder.java
+│   │       ├── Fb2BodyParser.java
+│   │       └── Fb2BlockParser.java
+│   ├── reader/
+│   │   ├── fb2/Fb2Reader.java
+│   │   └── fb3/Fb3Reader.java
+│   ├── writer/
+│   │   ├── fb2/Fb2Writer.java
+│   │   └── fb3/
+│   │       ├── Fb3Writer.java
+│   │       ├── Fb3ExportContext.java
+│   │       └── Fb3LinkRewriter.java
+│   ├── sanitizer/                      # Нормализация перед записью
+│   │   ├── Sanitizer.java
+│   │   ├── EmptyParagraphCleaner.java
+│   │   ├── TextNodeMerger.java
+│   │   └── OrphanedImageCleaner.java
+│   └── anchor/
+│       └── AnchorIndex.java            # Индекс якорей (#id)
+│
+├── encoding/                           # 🔤 АВТООПРЕДЕЛЕНИЕ КОДИРОВОК
+│   ├── EncodingDetector.java
+│   └── EncodingAwareInputStream.java
+│
+├── exception/                          # ⚠️ ИСКЛЮЧЕНИЯ
+│   ├── FictionBookException.java
+│   └── InvalidFormatException.java
+│
+└── util/                               # 🛠️ УТИЛИТЫ
+    └── MimeTypeResolver.java
