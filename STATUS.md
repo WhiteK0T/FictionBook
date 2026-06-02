@@ -162,9 +162,12 @@ org.tehlab.whitek0t.fictionbook/
         (косвенно прогоняется в pipeline-тесте).
 
 ### AnchorIndex
-- [x] AnchorIndex (immutable)
-- [x] AnchorInfo (record с byte offset, line number, body name)
-- [x] AnchorIndexBuilder.fromDto() — построение из DTO
+- [x] AnchorIndex (immutable, на базе `Map<String, AnchorInfo>`):
+      `find(id)`, `resolve(href)` (срезает `#`), `contains`, `canResolve`, `empty()`
+- [x] AnchorInfo (record: id, elementType, byteOffset, lineNumber, bodyName, domNode;
+      хелперы `hasByteOffset()` / `hasDomNode()`)
+- [x] AnchorIndexBuilder.fromDto() — индексирует id у section, cite, epigraph, poem
+      и бинарников; bodyName проставляется при обходе тел.
 
 ### Рендеринг
 - [x] FictionBookRenderer интерфейс (Command Pattern)
@@ -188,6 +191,11 @@ org.tehlab.whitek0t.fictionbook/
       (BOM, XML declaration, кириллические кодировки) — проверяется только косвенно.
 - [ ] `EncodingAwareInputStream` декодирует исходную кодировку и тут же
       перекодирует в UTF-8 (двойная транскодировка) — кандидат на оптимизацию.
+- [ ] AnchorIndex: при `fromDto()` `byteOffset` и `lineNumber` = −1 (заполняются
+      только в будущем streaming-режиме); `domNode` всегда `null`.
+- [ ] AnchorIndex: paragraph-уровневые `id` не индексируются (только section,
+      cite, epigraph, poem, бинарники).
+- [ ] AnchorIndex: нет юнит-тестов (`AnchorIndexBuilder` / `resolve`).
 
 ## ⏳ В планах (не начато)
 
