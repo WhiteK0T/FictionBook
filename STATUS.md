@@ -163,9 +163,12 @@ org.tehlab.whitek0t.fictionbook/
 - [x] BookPlayer (с контекстным стеком для ParagraphStyle)
 - [x] ParagraphStyle (13 стилей: NORMAL, SECTION_TITLE, CITATION, VERSE, etc.)
 - [x] ResourceResolver (placeholder, base64DataUri, saveToDirectory)
-- [x] HtmlRenderer (полный HTML5 с CSS, builder API, экранирование)
-- [x] PlainTextRenderer (подсчёт слов, превью, статистика)
-- [x] MimeTypeResolver (MIME → file extension)
+- [x] HtmlRenderer (полный HTML5 с CSS, builder API, экранирование, внешние
+      ссылки в новой вкладке, режимы wrap-in-document / фрагмент)
+- [x] PlainTextRenderer (подсчёт слов, превью, статистика, опциональный alt картинок)
+- [x] MimeTypeResolver (MIME → file extension; лежит в `util/`, не в `render/`)
+- [x] Покрыто `RenderersTest` (13 тестов: экранирование, форматирование, ссылки,
+      ParagraphStyle, оба рендерера, все режимы `ResourceResolver`)
 
 ## ⚠️ Частично реализовано
 
