@@ -177,7 +177,11 @@ org.tehlab.whitek0t.fictionbook/
 - [x] AnchorInfo (record: id, elementType, byteOffset, lineNumber, bodyName, domNode;
       хелперы `hasByteOffset()` / `hasDomNode()`)
 - [x] AnchorIndexBuilder.fromDto() — индексирует id у section, cite, epigraph, poem
-      и бинарников; bodyName проставляется при обходе тел.
+      и бинарников; bodyName проставляется при обходе тел. Прощающий режим: при
+      коллизии id остаётся первый зарегистрированный.
+- [x] Покрыто `AnchorIndexTest` (21 тест: AnchorInfo, поиск/резолв, fromDto). Тесты
+      вскрыли NPE в `canResolve`/`contains` на внешней ссылке (`null` id → запрос
+      к immutable-мапе) — починено null-проверкой в `contains`.
 
 ### Рендеринг
 - [x] FictionBookRenderer интерфейс (Command Pattern)
@@ -205,7 +209,6 @@ org.tehlab.whitek0t.fictionbook/
       только в будущем streaming-режиме); `domNode` всегда `null`.
 - [ ] AnchorIndex: paragraph-уровневые `id` не индексируются (только section,
       cite, epigraph, poem, бинарники).
-- [ ] AnchorIndex: нет юнит-тестов (`AnchorIndexBuilder` / `resolve`).
 
 ## ⏳ В планах (не начато)
 

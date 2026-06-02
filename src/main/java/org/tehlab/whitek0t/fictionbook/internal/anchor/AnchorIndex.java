@@ -82,7 +82,9 @@ public class AnchorIndex {
      * Проверяет, существует ли якорь с таким ID.
      */
     public boolean contains(String id) {
-        return anchors.containsKey(id);
+        // id может быть null (например, для внешней ссылки extractIdFromHref → null),
+        // а индекс хранится в immutable-мапе, которая на null-ключ бросает NPE.
+        return id != null && anchors.containsKey(id);
     }
 
     /**
