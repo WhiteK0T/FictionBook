@@ -160,7 +160,8 @@ org.tehlab.whitek0t.fictionbook/
       видел только листья, из-за чего `OrphanedLinkCleaner` был no-op)
 - [x] EmptyParagraphCleaner
 - [x] EmptySectionCleaner
-- [x] TextNodeMerger (склейка разбитых Text-нод)
+- [x] TextNodeMerger (склейка разбитых Text-нод, в т.ч. рекурсивно внутри
+      вложенных инлайнов — иначе экранирование `>` нестабильно при round-trip)
 - [x] OrphanedImageCleaner (проверка ссылок на картинки)
 - [x] OrphanedLinkCleaner (проверка внутренних ссылок)
 - [x] AttributeNormalizer (NCName compliance для id)
@@ -236,8 +237,11 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] Полноценные тесты:
   - [x] Round-trip тесты (`Fb2RoundTripTest`: фикспоинт write→read→write + сохранность
         метаданных, тела, annotation/history, бинарников)
-  - [ ] Property-based тесты (jqwik) — зависимость подключена в `build.gradle.kts`,
-        но ни одного `@Property`-теста пока не написано
+  - [x] Property-based тесты (jqwik) — `Fb2RoundTripPropertyTest`: фикспоинт
+        write→read→write на случайных DTO-деревьях (секции/вложенность/инлайны/
+        ссылки/бинарники). Вскрыл два бага: нестабильный порядок `<binary>`
+        (`Map.copyOf` в `FictionBookDto` рандомизировал порядок) и неполную склейку
+        текста внутри вложенных инлайнов (из-за чего «плавало» экранирование `>`).
   - [ ] Fuzz-тесты (случайные байты, битые XML)
   - [ ] Performance тесты (JMH бенчмарки) — плагин JMH не подключён
 

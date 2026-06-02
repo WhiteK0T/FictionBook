@@ -3,6 +3,8 @@ package org.tehlab.whitek0t.fictionbook.dto;
 
 import org.tehlab.whitek0t.fictionbook.dto.description.Description;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +19,9 @@ public record FictionBookDto(
 ) {
     public FictionBookDto {
         bodies = List.copyOf(bodies);
-        resources = Map.copyOf(resources);
+        // Сохраняем порядок документа: Map.copyOf даёт неопределённый (зависящий от
+        // соли и раскладки хэшей) порядок итерации, из-за чего <binary> при перезаписи
+        // переставлялись и ломался round-trip фикспоинт.
+        resources = Collections.unmodifiableMap(new LinkedHashMap<>(resources));
     }
 }

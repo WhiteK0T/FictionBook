@@ -164,7 +164,9 @@ public class Fb2Reader {
                 throw InvalidFormatException.missingElement(fileName, "body");
             }
 
-            return new FictionBookDto(description, List.copyOf(bodies), Map.copyOf(resources));
+            // resources собран в LinkedHashMap (порядок документа); порядок сохраняет
+            // конструктор FictionBookDto.
+            return new FictionBookDto(description, List.copyOf(bodies), resources);
 
         } catch (XMLStreamException e) {
             throw new FictionBookException("XML parsing error in " + fileName, e);
