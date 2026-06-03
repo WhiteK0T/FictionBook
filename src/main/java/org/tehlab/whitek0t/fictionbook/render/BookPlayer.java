@@ -49,13 +49,25 @@ public class BookPlayer {
         this.resourceLookup = resourceLookup;
     }
 
+    /**
+     * Функция поиска бинарного ресурса по ссылке при рендеринге картинок
+     * (например, {@code <image l:href="#cover"/>} → {@link Resource}).
+     */
     @FunctionalInterface
     public interface ResourceLookup {
+        /**
+         * Находит ресурс по ссылке.
+         *
+         * @param href ссылка на ресурс (как правило, якорь вида {@code "#cover"})
+         * @return найденный ресурс или {@code null}, если ресурс не найден
+         */
         Resource lookup(String href);
     }
 
     /**
-     * Проигрывает всю книгу.
+     * Проигрывает всю книгу: обходит все её тела и эмитит события в рендерер.
+     *
+     * @param book книга для рендеринга; не может быть {@code null}
      */
     public void play(FictionBookDto book) {
         Objects.requireNonNull(book, "book must not be null");
@@ -71,6 +83,8 @@ public class BookPlayer {
 
     /**
      * Проигрывает одно тело книги (основной текст или примечания).
+     *
+     * @param body тело книги; {@code null} безопасно игнорируется
      */
     public void playBody(BodyDto body) {
         if (body == null || body.sections() == null) {
@@ -83,7 +97,9 @@ public class BookPlayer {
     }
 
     /**
-     * Проигрывает секцию (главу) рекурсивно.
+     * Проигрывает секцию (главу) рекурсивно: заголовок, содержимое и вложенные секции.
+     *
+     * @param section секция; {@code null} безопасно игнорируется
      */
     public void playSection(Section section) {
         if (section == null) {
@@ -121,8 +137,9 @@ public class BookPlayer {
     }
 
     /**
-     * Проигрывает блочный элемент.
-     * Использует pattern matching для диспетчеризации.
+     * Проигрывает блочный элемент, диспетчеризуя по конкретному типу через pattern matching.
+     *
+     * @param block блочный элемент; {@code null} безопасно игнорируется
      */
     public void playBlock(BlockElement block) {
         if (block == null) {
@@ -327,8 +344,9 @@ public class BookPlayer {
     }
 
     /**
-     * Проигрывает инлайновый элемент.
-     * Использует pattern matching для диспетчеризации.
+     * Проигрывает встроенный (inline) элемент, диспетчеризуя по типу через pattern matching.
+     *
+     * @param inline inline-элемент; {@code null} безопасно игнорируется
      */
     public void playInline(InlineElement inline) {
         if (inline == null) {

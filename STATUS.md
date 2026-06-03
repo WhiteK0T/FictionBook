@@ -219,8 +219,12 @@ org.tehlab.whitek0t.fictionbook/
       структурные проверки (битые `{@link}`, HTML, синтаксис) оставлены — именно они
       ловили реальные баги; требование комментария на каждый внутренний член отключено,
       чтобы не зашумлять `internal/`.
-- [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings).
-- [ ] Javadoc для `api/` и `render/` (публичный фасад и рендереры) — пока не дописан.
+- [x] Javadoc публичного фасада `api/` (`FictionBookIO`, `FictionBookFormat`,
+      `FictionBookStreamer`) и рендеринга `render/` (`BookPlayer`, `FictionBookRenderer`,
+      `ParagraphStyle`, `ResourceResolver`, `HtmlRenderer`/`PlainTextRenderer`).
+- [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings);
+      под строгим `-Xdoclint:all` пакеты `api/` и `render/` без замечаний, в `dto/` остаются
+      лишь 3 косметических note на компактных конструкторах (параметры покрыты `@param`).
 
 ## ⚠️ Частично реализовано
 
