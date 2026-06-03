@@ -12,6 +12,13 @@ import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Определяет кодировку FB2-файла по первым байтам. FB2 в дикой природе встречается в
+ * разных кодировках (UTF-8, UTF-16, windows-1251…), и заявленная кодировка не всегда
+ * совпадает с фактической — поэтому детект многоступенчатый.
+ *
+ * <p>Утилитный класс со статическим методом {@link #detect(Path)}; не инстанцируется.</p>
+ */
 public final class EncodingDetector {
 
     private static final Pattern XML_DECL = Pattern.compile(
@@ -20,13 +27,23 @@ public final class EncodingDetector {
     );
     private static final int PROBE_SIZE = 8192;
 
+    private EncodingDetector() {
+    }
+
     /**
-     * Определяет кодировку FB2-файла.
-     * Приоритет:
-     * 1. BOM (Byte Order Mark)
-     * 2. XML declaration {@code <?xml encoding="..."?>}
-     * 3. Эвристический детектор Mozilla
-     * 4. Fallback: UTF-8
+     * Определяет кодировку FB2-файла по первым {@value #PROBE_SIZE} байтам.
+     *
+     * <p>Приоритет источников (первый сработавший побеждает):</p>
+     * <ol>
+     *   <li>BOM (Byte Order Mark) — UTF-8, UTF-16LE, UTF-16BE;</li>
+     *   <li>XML-декларация {@code <?xml … encoding="…"?>};</li>
+     *   <li>эвристический детектор Mozilla (juniversalchardet);</li>
+     *   <li>fallback — UTF-8.</li>
+     * </ol>
+     *
+     * @param file путь к файлу
+     * @return определённая кодировка; никогда не {@code null} (минимум UTF-8)
+     * @throws IOException при ошибке чтения файла
      */
     public static Charset detect(Path file) throws IOException {
         byte[] probe = new byte[PROBE_SIZE];

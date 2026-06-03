@@ -9,9 +9,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Обёртка, которая читает файл в определённой кодировке
- * и отдаёт наружу байты, перекодированные в UTF-8.
- * Также обрезает BOM, если он был в исходном файле.
+ * Поток, который читает файл в его исходной кодировке (определённой через
+ * {@link EncodingDetector}) и отдаёт наружу байты, перекодированные в UTF-8.
+ * Дополнительно обрезает BOM, если тот присутствовал в исходном файле.
+ *
+ * <p>Используется ридером, чтобы дальше по конвейеру работать с единой кодировкой
+ * (UTF-8) независимо от того, в чём был исходный FB2.</p>
  */
 public class EncodingAwareInputStream extends InputStream {
     /** BOM, декодированный любым из UTF-кодеков, приходит как этот символ (U+FEFF). */
@@ -22,6 +25,12 @@ public class EncodingAwareInputStream extends InputStream {
     private int pos = 0;
     private boolean firstChunk = true;
 
+    /**
+     * Открывает файл, определяет его кодировку и готовит поток к выдаче UTF-8.
+     *
+     * @param file путь к читаемому файлу
+     * @throws IOException при ошибке открытия/чтения файла
+     */
     public EncodingAwareInputStream(Path file) throws IOException {
         Charset charset = EncodingDetector.detect(file);
         this.reader = Files.newBufferedReader(file, charset);

@@ -212,31 +212,34 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Юнит-тесты по компонентам (см. пометки «Покрыто …» в разделах выше)
 
 ### Документация и сборка
-- [x] Javadoc публичного API в `dto/` — все типы (block/inline-элементы, метаданные
-      `description/`, корневые `FictionBookDto`/`BodyDto`/`Resource`); компоненты записей
-      описаны через `@param`, каждый тип привязан к своему FB2-элементу.
 - [x] doclint настроен на `-Xdoclint:all,-missing` (в `build.gradle.kts`): строгие
       структурные проверки (битые `{@link}`, HTML, синтаксис) оставлены — именно они
-      ловили реальные баги; требование комментария на каждый внутренний член отключено,
-      чтобы не зашумлять `internal/`.
-- [x] Javadoc публичного фасада `api/` (`FictionBookIO`, `FictionBookFormat`,
-      `FictionBookStreamer`) и рендеринга `render/` (`BookPlayer`, `FictionBookRenderer`,
-      `ParagraphStyle`, `ResourceResolver`, `HtmlRenderer`/`PlainTextRenderer`).
-- [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings);
-      под строгим `-Xdoclint:all` пакеты `dto/`, `api/` и `render/` полностью без замечаний.
+      ловили реальные баги; требование комментария на каждый член отключено, чтобы не
+      зашумлять реализацию.
+- [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings
+      при рабочем `-Xdoclint:all,-missing`).
+- [x] Javadoc полностью покрыт (0 замечаний под строгим `-Xdoclint:all`): пакеты `dto/`
+      (все типы; компоненты записей через `@param`, привязка к FB2-элементам; компактные
+      конструкторы) и `encoding/` (`EncodingDetector`, `EncodingAwareInputStream`).
+- [x] `render/BookPlayer` задокументирован полностью (публичные `play*` + `ResourceLookup`).
+- [ ] **Javadoc публичного API дописан не везде** (см. аудит ниже): `api/`, остальной
+      `render/`, `util/`, `exception/` ещё содержат пробелы.
 
-**Аудит javadoc (строгий прогон `-Xdoclint:all` по всему проекту):**
+**Аудит javadoc (строгий `-Xdoclint:all` по всему проекту, лимит вывода снят
+`-Xmaxwarns`):**
 - **0 ошибок** во всём проекте — структурные проверки (битые `{@link}`, HTML, синтаксис)
   чисты везде, включая `internal/`.
-- **Публичный API без замечаний:** `dto/`, `api/`, `render/` проходят строгий doclint с
-  нулём предупреждений (типы, компоненты записей через `@param`, методы с `@return`/`@throws`).
-- **Остаются ~100 предупреждений только категории «missing»** (нет комментария/`@param`/
-  `@return`/`@throws`/описания) — все в имплементации и намеренно гасятся `-Xdoclint:all,-missing`:
-  `internal/parser/jackson` (52, Jackson-биндинг-DTO), `internal/anchor` (13),
-  `internal/parser/stax` (9), `internal/reader/fb2` (7), `internal/writer/fb2` (6),
-  `encoding` (6), `internal/sanitizer` (5), `internal/io` (2).
-- [ ] (Опционально) Javadoc для `encoding/` (`EncodingDetector`, `EncodingAwareInputStream`) —
-  пакет не под `internal/`, но является низкоуровневой инфраструктурой; пока не дописан.
+- **290 предупреждений, все категории «missing»** (нет комментария/`@param`/`@return`/
+  `@throws`/описания). По умолчанию `javac` обрезает вывод на 100 — из-за этого ранний
+  «беглый» прогон ошибочно показывал `api/`/`render/` чистыми; полный счёт получен
+  с поднятым `-Xmaxwarns`.
+- Разбивка по пакетам: `exception` (83 — фабрики исключений), `internal/parser/jackson`
+  (59), `render` (40), `api` (23), `internal/sanitizer` (18), `internal/parser/stax` (18),
+  `render/impl` (17), `internal/anchor` (13), `internal/reader/fb2` (7),
+  `internal/writer/fb2` (6), `util` (4), `internal/io` (2). Пакеты `dto/` и `encoding/` — 0.
+- Все 290 гасятся рабочим `-Xdoclint:all,-missing`, поэтому `./gradlew build` зелёный.
+- Осталось задокументировать публично-видимые пакеты: `api/`, `render/` (кроме `BookPlayer`),
+  `util/`, `exception/`; `internal/*` сознательно оставлен без javadoc (деталь реализации).
 
 ## ⚠️ Частично реализовано
 
