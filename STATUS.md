@@ -204,6 +204,9 @@ org.tehlab.whitek0t.fictionbook/
       сохранность метаданных, тела, annotation/history, бинарников)
 - [x] Property-based round-trip (`Fb2RoundTripPropertyTest`, jqwik): фикспоинт на
       случайных DTO-деревьях; вскрыл баги порядка `<binary>` и склейки вложенного текста
+- [x] Fuzz-тесты прощающего чтения (`Fb2ReaderFuzzTest`, jqwik): на случайных байтах и
+      покалеченном FB2 ридер обязан вернуть непустой DTO либо бросить `FictionBookException`
+      — никаких `NPE`/`XMLStreamException`/`StackOverflowError` наружу
 - [x] Юнит-тесты по компонентам (см. пометки «Покрыто …» в разделах выше)
 
 ## ⚠️ Частично реализовано
@@ -241,9 +244,8 @@ org.tehlab.whitek0t.fictionbook/
 ### Улучшения
 - [ ] Mutable Model — для удобного редактирования (вместо пересоздания immutable DTO)
 - [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
-- [ ] Недостающие тесты (round-trip и property-based уже есть — см. «Тестирование»):
-  - [ ] Fuzz-тесты (случайные байты, битые XML)
-  - [ ] Performance тесты (JMH бенчмарки) — плагин JMH не подключён
+- [ ] Performance тесты (JMH бенчмарки) — плагин JMH не подключён
+      (round-trip, property-based и fuzz уже есть — см. «Тестирование»)
 
 ### Инфраструктура
 - [ ] CLI-утилита — конвертер fb2↔fb3↔html
@@ -379,8 +381,8 @@ FictionBookDto clean = custom.sanitize(book);
 ## Высокий приоритет
 1. **Fb3Reader** — базовая поддержка FB3 (ZIP + XML)
 2. **Fb3Writer** — генерация FB3 с UUID-маппингом
-3. **Тесты** — fuzz (битые байты/XML) и JMH-бенчмарки; round-trip и property-based
-   уже есть (`Fb2RoundTripTest`, `Fb2RoundTripPropertyTest`)
+3. **Тесты** — осталось JMH-бенчмарки; round-trip, property-based и fuzz уже есть
+   (`Fb2RoundTripTest`, `Fb2RoundTripPropertyTest`, `Fb2ReaderFuzzTest`)
 
 ## Средний приоритет
 4. **FictionBookStreamer** — Streaming API для читалок
