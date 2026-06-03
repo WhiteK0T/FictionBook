@@ -1,5 +1,7 @@
 package org.tehlab.whitek0t.fictionbook.internal.parser.jackson;
 
+import org.tehlab.whitek0t.fictionbook.internal.reader.fb2.Fb2Reader;
+
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;

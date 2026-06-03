@@ -3,7 +3,7 @@ package org.tehlab.whitek0t.fictionbook.internal.parser.jackson;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 
 /**
- * DTO для элемента <image> внутри <coverpage>.
+ * DTO для элемента {@code <image>} внутри {@code <coverpage>}.
  *
  * <p>Поддерживает два варианта написания атрибута href:</p>
  * <ul>

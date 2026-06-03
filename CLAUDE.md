@@ -22,10 +22,6 @@ Build, test, and run all use the Gradle wrapper:
 ./gradlew jmh                    # run JMH benchmarks (src/jmh/java)
 ```
 
-Note: `./gradlew build` currently fails on the `:javadoc` task due to pre-existing doclint
-errors in `MixedContentCapture` / `Fb2ImageRefJax` (unrelated to tests). Use `./gradlew test`
-to validate changes.
-
 Lombok is applied via the `io.freefair.lombok` plugin (annotation processing). There is no separate lint task. `maven-publish` is configured but the publication block is commented out.
 
 ## Architecture
