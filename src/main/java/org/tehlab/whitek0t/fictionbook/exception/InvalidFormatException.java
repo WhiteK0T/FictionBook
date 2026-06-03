@@ -18,6 +18,9 @@ import java.nio.file.Path;
  * Содержит детальную информацию о месте ошибки (файл, строка, колонка, элемент),
  * что позволяет давать пользователю понятные сообщения.
  *
+ * <p>Экземпляры удобнее создавать не конструктором, а статическими фабричными
+ * методами ({@link #missingElement}, {@link #unexpectedElement}, …).</p>
+ *
  * <p>Пример использования:</p>
  * <pre>
  * if (description == null) {
@@ -32,13 +35,19 @@ import java.nio.file.Path;
  */
 public class InvalidFormatException extends FictionBookException {
 
+    /** Имя файла с ошибкой или {@code null}, если неизвестно. */
     private final String fileName;
+    /** Номер строки или {@code -1}, если неизвестно. */
     private final int line;
+    /** Номер колонки или {@code -1}, если неизвестно. */
     private final int column;
+    /** Имя XML-элемента или {@code null}, если неизвестно. */
     private final String elementName;
 
     /**
-     * Базовый конструктор.
+     * Базовый конструктор без сведений о месте ошибки.
+     *
+     * @param message человекочитаемое описание ошибки
      */
     public InvalidFormatException(String message) {
         super(message);
@@ -49,7 +58,10 @@ public class InvalidFormatException extends FictionBookException {
     }
 
     /**
-     * Конструктор с причиной.
+     * Конструктор с первопричиной, без сведений о месте ошибки.
+     *
+     * @param message человекочитаемое описание ошибки
+     * @param cause   исходное исключение-первопричина
      */
     public InvalidFormatException(String message, Throwable cause) {
         super(message, cause);
@@ -61,6 +73,12 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Полный конструктор с информацией о месте ошибки.
+     *
+     * @param message     человекочитаемое описание ошибки
+     * @param fileName    имя файла, где обнаружена ошибка (или {@code null})
+     * @param line        номер строки (или {@code -1}, если неизвестно)
+     * @param column      номер колонки (или {@code -1}, если неизвестно)
+     * @param elementName имя XML-элемента (или {@code null})
      */
     public InvalidFormatException(String message, String fileName, int line, int column, String elementName) {
         super(message);
@@ -71,7 +89,14 @@ public class InvalidFormatException extends FictionBookException {
     }
 
     /**
-     * Полный конструктор с причиной и информацией о месте ошибки.
+     * Полный конструктор с первопричиной и информацией о месте ошибки.
+     *
+     * @param message     человекочитаемое описание ошибки
+     * @param cause       исходное исключение-первопричина
+     * @param fileName    имя файла, где обнаружена ошибка (или {@code null})
+     * @param line        номер строки (или {@code -1}, если неизвестно)
+     * @param column      номер колонки (или {@code -1}, если неизвестно)
+     * @param elementName имя XML-элемента (или {@code null})
      */
     public InvalidFormatException(String message, Throwable cause,
                                   String fileName, int line, int column, String elementName) {
@@ -87,35 +112,45 @@ public class InvalidFormatException extends FictionBookException {
     // ========================================================================
 
     /**
-     * @return Имя файла, в котором обнаружена ошибка (или null, если неизвестно)
+     * Имя файла, в котором обнаружена ошибка.
+     *
+     * @return имя файла или {@code null}, если неизвестно
      */
     public String getFileName() {
         return fileName;
     }
 
     /**
-     * @return Номер строки с ошибкой (или -1, если неизвестно)
+     * Номер строки с ошибкой.
+     *
+     * @return номер строки или {@code -1}, если неизвестно
      */
     public int getLine() {
         return line;
     }
 
     /**
-     * @return Номер колонки с ошибкой (или -1, если неизвестно)
+     * Номер колонки с ошибкой.
+     *
+     * @return номер колонки или {@code -1}, если неизвестно
      */
     public int getColumn() {
         return column;
     }
 
     /**
-     * @return Имя XML-элемента, в котором обнаружена ошибка (или null)
+     * Имя XML-элемента, в котором обнаружена ошибка.
+     *
+     * @return имя элемента или {@code null}, если неизвестно
      */
     public String getElementName() {
         return elementName;
     }
 
     /**
-     * @return true, если есть информация о месте ошибки
+     * Проверяет, есть ли сведения о месте ошибки.
+     *
+     * @return {@code true}, если известны файл, строка или элемент
      */
     public boolean hasLocation() {
         return line > 0 || fileName != null || elementName != null;
@@ -165,6 +200,10 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Отсутствует обязательный элемент.
+     *
+     * @param fileName    имя файла
+     * @param elementName имя отсутствующего элемента
+     * @return готовое исключение
      */
     public static InvalidFormatException missingElement(String fileName, String elementName) {
         return new InvalidFormatException(
@@ -175,6 +214,11 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Отсутствует обязательный элемент (с позицией).
+     *
+     * @param fileName    имя файла
+     * @param elementName имя отсутствующего элемента
+     * @param location    позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException missingElement(String fileName, String elementName, Location location) {
         return new InvalidFormatException(
@@ -188,6 +232,12 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Отсутствует обязательный атрибут.
+     *
+     * @param fileName      имя файла
+     * @param elementName   имя элемента, в котором ожидался атрибут
+     * @param attributeName имя отсутствующего атрибута
+     * @param location      позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException missingAttribute(String fileName, String elementName,
                                                           String attributeName, Location location) {
@@ -202,6 +252,14 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Невалидное значение атрибута.
+     *
+     * @param fileName      имя файла
+     * @param elementName   имя элемента
+     * @param attributeName имя атрибута
+     * @param value         фактическое (некорректное) значение
+     * @param reason        причина, почему значение невалидно
+     * @param location      позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException invalidAttributeValue(String fileName, String elementName,
                                                                String attributeName, String value,
@@ -218,6 +276,11 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Неожиданный элемент.
+     *
+     * @param fileName    имя файла
+     * @param elementName имя неожиданного элемента
+     * @param location    позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException unexpectedElement(String fileName, String elementName,
                                                            Location location) {
@@ -231,7 +294,13 @@ public class InvalidFormatException extends FictionBookException {
     }
 
     /**
-     * Неожиданный элемент с контекстом (где не ожидался).
+     * Неожиданный элемент с контекстом (где именно он не ожидался).
+     *
+     * @param fileName      имя файла
+     * @param elementName   имя неожиданного элемента
+     * @param parentElement имя родительского элемента, внутри которого он встретился
+     * @param location      позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException unexpectedElement(String fileName, String elementName,
                                                            String parentElement, Location location) {
@@ -245,7 +314,12 @@ public class InvalidFormatException extends FictionBookException {
     }
 
     /**
-     * Дубликат элемента (если запрещён).
+     * Дубликат элемента, который должен присутствовать в единственном экземпляре.
+     *
+     * @param fileName    имя файла
+     * @param elementName имя продублированного элемента
+     * @param location    позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException duplicateElement(String fileName, String elementName,
                                                           Location location) {
@@ -260,6 +334,10 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Неподдерживаемая версия формата.
+     *
+     * @param fileName имя файла
+     * @param version  обнаруженная (неподдерживаемая) версия
+     * @return готовое исключение
      */
     public static InvalidFormatException unsupportedVersion(String fileName, String version) {
         return new InvalidFormatException(
@@ -270,6 +348,12 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Недопустимая ссылка (например, на несуществующий якорь).
+     *
+     * @param fileName    имя файла
+     * @param href        значение ссылки, которое не удалось разрешить
+     * @param elementName имя элемента, содержащего ссылку
+     * @param location    позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException brokenReference(String fileName, String href,
                                                          String elementName, Location location) {
@@ -284,6 +368,11 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Повреждённый или недоступный ресурс.
+     *
+     * @param fileName   имя файла
+     * @param resourceId идентификатор проблемного ресурса
+     * @param reason     причина недоступности/повреждения
+     * @return готовое исключение
      */
     public static InvalidFormatException brokenResource(String fileName, String resourceId,
                                                         String reason) {
@@ -295,6 +384,11 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Ошибка в ZIP-контейнере FB3.
+     *
+     * @param fileName имя файла
+     * @param reason   описание проблемы с архивом
+     * @param cause    исходное исключение-первопричина
+     * @return готовое исключение
      */
     public static InvalidFormatException brokenArchive(String fileName, String reason, Throwable cause) {
         return new InvalidFormatException(
@@ -305,6 +399,10 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Отсутствует обязательный файл внутри FB3-архива.
+     *
+     * @param fileName  имя файла
+     * @param entryPath путь к отсутствующей записи внутри архива
+     * @return готовое исключение
      */
     public static InvalidFormatException missingFb3Entry(String fileName, String entryPath) {
         return new InvalidFormatException(
@@ -315,6 +413,11 @@ public class InvalidFormatException extends FictionBookException {
 
     /**
      * Общая ошибка валидации с произвольным сообщением.
+     *
+     * @param fileName имя файла
+     * @param message  человекочитаемое описание ошибки
+     * @param location позиция в XML (может быть {@code null})
+     * @return готовое исключение
      */
     public static InvalidFormatException validationError(String fileName, String message,
                                                          Location location) {
@@ -332,7 +435,10 @@ public class InvalidFormatException extends FictionBookException {
     // ========================================================================
 
     /**
-     * Извлекает имя файла из Path для использования в сообщениях об ошибках.
+     * Извлекает имя файла из {@link Path} для использования в сообщениях об ошибках.
+     *
+     * @param path путь к файлу (может быть {@code null})
+     * @return короткое имя файла, либо полный путь, либо {@code null} для {@code null}-входа
      */
     public static String extractFileName(Path path) {
         if (path == null) return null;

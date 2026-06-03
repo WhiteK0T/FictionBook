@@ -3,7 +3,10 @@ package org.tehlab.whitek0t.fictionbook.util;
 import java.util.Map;
 
 /**
- * Преобразует MIME-типы в расширения файлов.
+ * Преобразует MIME-типы в расширения файлов. Используется при выгрузке бинарных
+ * ресурсов на диск, чтобы дать картинке корректное имя файла.
+ *
+ * <p>Утилитный класс со статическими методами; не инстанцируется.</p>
  */
 public final class MimeTypeResolver {
 
@@ -25,7 +28,10 @@ public final class MimeTypeResolver {
 
     /**
      * Возвращает расширение файла (с точкой) для данного MIME-типа.
-     * Если тип неизвестен — возвращает ".bin".
+     *
+     * @param mimeType MIME-тип (регистр и пробелы по краям не важны); может быть {@code null}
+     * @return расширение с ведущей точкой (например, {@code ".png"}); {@code ".bin"} для
+     *         неизвестного или {@code null}-типа
      */
     public static String toExtension(String mimeType) {
         if (mimeType == null) return ".bin";
@@ -33,7 +39,10 @@ public final class MimeTypeResolver {
     }
 
     /**
-     * Возвращает расширение без точки.
+     * Возвращает расширение файла без ведущей точки.
+     *
+     * @param mimeType MIME-тип; может быть {@code null}
+     * @return расширение без точки (например, {@code "png"}); {@code "bin"} для неизвестного типа
      */
     public static String toExtensionWithoutDot(String mimeType) {
         String ext = toExtension(mimeType);

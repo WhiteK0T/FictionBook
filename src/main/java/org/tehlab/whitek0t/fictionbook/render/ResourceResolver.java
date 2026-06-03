@@ -37,7 +37,9 @@ public interface ResourceResolver {
     String resolve(Resource resource, String alt);
 
     /**
-     * Резолвер по умолчанию: возвращает placeholder.
+     * Резолвер по умолчанию: возвращает текстовый placeholder вместо картинки.
+     *
+     * @return резолвер, отдающий {@code "[image: …]"}
      */
     static ResourceResolver placeholder() {
         return (resource, alt) -> "[image: " + (alt != null ? alt : "no alt") + "]";
@@ -46,6 +48,8 @@ public interface ResourceResolver {
     /**
      * Резолвер, генерирующий base64 data URI (картинка встраивается в HTML).
      * Подходит для маленьких книг, где не хочется возиться с отдельными файлами.
+     *
+     * @return резолвер, отдающий {@code data:}-URI, либо {@code null} при ошибке чтения
      */
     static ResourceResolver base64DataUri() {
         return (resource, alt) -> {
@@ -65,6 +69,8 @@ public interface ResourceResolver {
      *
      * @param imagesDir         папка для сохранения картинок
      * @param relativeUrlPrefix префикс URL (например, "images/")
+     * @return резолвер, сохраняющий картинку и отдающий относительный URL, либо
+     *         {@code null} при ошибке ввода-вывода
      */
     static ResourceResolver saveToDirectory(java.nio.file.Path imagesDir, String relativeUrlPrefix) {
         return (resource, alt) -> {

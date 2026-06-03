@@ -96,13 +96,17 @@ public enum ParagraphStyle {
     }
 
     /**
-     * @return Имя стиля для логирования и отладки
+     * Машиночитаемое имя стиля.
+     *
+     * @return имя стиля для логирования и отладки
      */
     public String getName() {
         return name;
     }
 
     /**
+     * CSS-класс, ассоциированный со стилем.
+     *
      * @return CSS-класс для HTML-рендеринга
      */
     public String getCssClass() {
@@ -110,28 +114,36 @@ public enum ParagraphStyle {
     }
 
     /**
-     * @return true, если этот стиль должен иметь увеличенный размер шрифта
+     * Должен ли стиль рендериться увеличенным шрифтом.
+     *
+     * @return {@code true}, если этот стиль должен иметь увеличенный размер шрифта
      */
     public boolean isLargeFont() {
         return this == SECTION_TITLE || this == SUBTITLE;
     }
 
     /**
-     * @return true, если этот стиль должен быть выделен (жирный, курсив)
+     * Должен ли стиль рендериться с выделением.
+     *
+     * @return {@code true}, если этот стиль должен быть выделен (жирный, курсив)
      */
     public boolean isEmphasized() {
         return this == SECTION_TITLE || this == SUBTITLE || this == CITATION;
     }
 
     /**
-     * @return true, если этот стиль должен иметь отступ слева
+     * Должен ли стиль иметь отступ слева.
+     *
+     * @return {@code true}, если этот стиль должен иметь отступ слева
      */
     public boolean hasIndent() {
         return this == CITATION || this == EPIGRAPH || this == VERSE;
     }
 
     /**
-     * @return true, если этот стиль должен быть выровнен по центру
+     * Должен ли стиль выравниваться по центру.
+     *
+     * @return {@code true}, если этот стиль должен быть выровнен по центру
      */
     public boolean isCentered() {
         return this == SECTION_TITLE || this == SUBTITLE || this == POEM_AUTHOR;

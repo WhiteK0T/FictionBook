@@ -231,15 +231,18 @@ public class PlainTextRenderer implements FictionBookRenderer {
     // ========================================================================
 
     /**
-     * Возвращает сгенерированный текст.
-     * Нормализует множественные пустые строки.
+     * Возвращает сгенерированный текст, нормализуя множественные пустые строки.
+     *
+     * @return итоговый плоский текст
      */
     public String getOutput() {
         return normalize(text.toString());
     }
 
     /**
-     * Возвращает количество слов в тексте.
+     * Подсчитывает количество слов в результате.
+     *
+     * @return число слов
      */
     public int getWordCount() {
         String output = getOutput();
@@ -251,7 +254,9 @@ public class PlainTextRenderer implements FictionBookRenderer {
     }
 
     /**
-     * Возвращает количество символов (без пробелов).
+     * Подсчитывает количество символов без учёта пробельных.
+     *
+     * @return число непробельных символов
      */
     public int getCharacterCount() {
         String output = getOutput();
@@ -261,7 +266,10 @@ public class PlainTextRenderer implements FictionBookRenderer {
     }
 
     /**
-     * Возвращает первые N символов текста (для превью).
+     * Возвращает начало текста для превью, обрезая по границе слова.
+     *
+     * @param maxLength максимальная длина превью в символах
+     * @return превью длиной не более {@code maxLength} (с многоточием при обрезке)
      */
     public String getPreview(int maxLength) {
         String output = getOutput().trim();

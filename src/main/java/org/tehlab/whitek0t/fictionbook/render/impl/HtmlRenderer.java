@@ -54,6 +54,11 @@ public class HtmlRenderer implements FictionBookRenderer {
         this.customCss = builder.customCss;
     }
 
+    /**
+     * Создаёт builder для конфигурирования рендерера.
+     *
+     * @return новый {@link Builder}
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -279,6 +284,8 @@ public class HtmlRenderer implements FictionBookRenderer {
 
     /**
      * Возвращает сгенерированный HTML.
+     *
+     * @return HTML-строка (полный документ или фрагмент — в зависимости от настроек)
      */
     public String getOutput() {
         if (wrapInDocument && !documentStarted) {
@@ -459,12 +466,23 @@ public class HtmlRenderer implements FictionBookRenderer {
     // BUILDER
     // ========================================================================
 
+    /** Builder для конфигурирования {@link HtmlRenderer}. */
     public static class Builder {
         private ResourceResolver resourceResolver;
         private boolean wrapInDocument = false;
         private String title;
         private String customCss;
 
+        /** Создаёт builder со значениями по умолчанию. */
+        public Builder() {
+        }
+
+        /**
+         * Задаёт резолвер картинок.
+         *
+         * @param resolver резолвер ресурсов
+         * @return этот же builder (fluent API)
+         */
         public Builder resourceResolver(ResourceResolver resolver) {
             this.resourceResolver = resolver;
             return this;
@@ -472,7 +490,10 @@ public class HtmlRenderer implements FictionBookRenderer {
 
         /**
          * Оборачивать ли результат в полный HTML-документ (DOCTYPE, head, body).
-         * Если false — возвращается только HTML-фрагмент.
+         * Если {@code false} — возвращается только HTML-фрагмент.
+         *
+         * @param wrap {@code true} — полный документ, {@code false} — фрагмент
+         * @return этот же builder (fluent API)
          */
         public Builder wrapInHtmlDocument(boolean wrap) {
             this.wrapInDocument = wrap;
@@ -480,7 +501,10 @@ public class HtmlRenderer implements FictionBookRenderer {
         }
 
         /**
-         * Заголовок HTML-документа (тег &lt;title&gt;).
+         * Задаёт заголовок HTML-документа (тег {@code <title>}).
+         *
+         * @param title текст заголовка
+         * @return этот же builder (fluent API)
          */
         public Builder title(String title) {
             this.title = title;
@@ -488,13 +512,21 @@ public class HtmlRenderer implements FictionBookRenderer {
         }
 
         /**
-         * Дополнительный CSS (добавляется после стандартного).
+         * Добавляет пользовательский CSS (после стандартного).
+         *
+         * @param css дополнительный CSS
+         * @return этот же builder (fluent API)
          */
         public Builder customCss(String css) {
             this.customCss = css;
             return this;
         }
 
+        /**
+         * Собирает настроенный рендерер.
+         *
+         * @return новый {@link HtmlRenderer}
+         */
         public HtmlRenderer build() {
             return new HtmlRenderer(this);
         }

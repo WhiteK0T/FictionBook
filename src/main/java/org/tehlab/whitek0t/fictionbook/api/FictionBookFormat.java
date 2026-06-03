@@ -30,7 +30,9 @@ public enum FictionBookFormat {
     }
 
     /**
-     * @return Расширение файла для данного формата (с точкой)
+     * Возвращает расширение файла, ассоциированное с форматом.
+     *
+     * @return расширение файла для данного формата (с точкой), например {@code ".fb2"}
      */
     public String getExtension() {
         return extension;

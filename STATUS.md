@@ -218,28 +218,26 @@ org.tehlab.whitek0t.fictionbook/
       зашумлять реализацию.
 - [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings
       при рабочем `-Xdoclint:all,-missing`).
-- [x] Javadoc полностью покрыт (0 замечаний под строгим `-Xdoclint:all`): пакеты `dto/`
-      (все типы; компоненты записей через `@param`, привязка к FB2-элементам; компактные
-      конструкторы) и `encoding/` (`EncodingDetector`, `EncodingAwareInputStream`).
-- [x] `render/BookPlayer` задокументирован полностью (публичные `play*` + `ResourceLookup`).
-- [ ] **Javadoc публичного API дописан не везде** (см. аудит ниже): `api/`, остальной
-      `render/`, `util/`, `exception/` ещё содержат пробелы.
+- [x] **Весь публичный API задокументирован** (0 замечаний под строгим `-Xdoclint:all`):
+      `dto/`, `api/`, `render/` (включая `BookPlayer`, `FictionBookRenderer`, `ParagraphStyle`,
+      `ResourceResolver`, `HtmlRenderer`/`PlainTextRenderer`), `util/`, `exception/`
+      (включая фабричные методы `InvalidFormatException`) и `encoding/`.
 
 **Аудит javadoc (строгий `-Xdoclint:all` по всему проекту, лимит вывода снят
 `-Xmaxwarns`):**
 - **0 ошибок** во всём проекте — структурные проверки (битые `{@link}`, HTML, синтаксис)
   чисты везде, включая `internal/`.
-- **290 предупреждений, все категории «missing»** (нет комментария/`@param`/`@return`/
-  `@throws`/описания). По умолчанию `javac` обрезает вывод на 100 — из-за этого ранний
-  «беглый» прогон ошибочно показывал `api/`/`render/` чистыми; полный счёт получен
-  с поднятым `-Xmaxwarns`.
-- Разбивка по пакетам: `exception` (83 — фабрики исключений), `internal/parser/jackson`
-  (59), `render` (40), `api` (23), `internal/sanitizer` (18), `internal/parser/stax` (18),
-  `render/impl` (17), `internal/anchor` (13), `internal/reader/fb2` (7),
-  `internal/writer/fb2` (6), `util` (4), `internal/io` (2). Пакеты `dto/` и `encoding/` — 0.
-- Все 290 гасятся рабочим `-Xdoclint:all,-missing`, поэтому `./gradlew build` зелёный.
-- Осталось задокументировать публично-видимые пакеты: `api/`, `render/` (кроме `BookPlayer`),
-  `util/`, `exception/`; `internal/*` сознательно оставлен без javadoc (деталь реализации).
+- **0 предупреждений во всех публично-видимых пакетах** (`dto/`, `api/`, `render/`,
+  `render/impl/`, `util/`, `exception/`, `encoding/`).
+- Осталось **123 предупреждения, все категории «missing» и все в `internal/*`** —
+  деталь реализации, документировать намеренно не стали; гасятся рабочим
+  `-Xdoclint:all,-missing`, поэтому `./gradlew build` зелёный. Разбивка:
+  `internal/parser/jackson` (59), `internal/sanitizer` (18), `internal/parser/stax` (18),
+  `internal/anchor` (13), `internal/reader/fb2` (7), `internal/writer/fb2` (6),
+  `internal/io` (2).
+- Примечание: по умолчанию `javac` обрезает вывод предупреждений на 100 (`-Xmaxwarns`);
+  истинные числа выше получены с поднятым лимитом, иначе ранний «беглый» прогон вводил
+  в заблуждение (казалось, что `api/`/`render/` чисты).
 
 ## ⚠️ Частично реализовано
 
