@@ -225,6 +225,19 @@ org.tehlab.whitek0t.fictionbook/
 - [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings);
       под строгим `-Xdoclint:all` пакеты `dto/`, `api/` и `render/` полностью без замечаний.
 
+**Аудит javadoc (строгий прогон `-Xdoclint:all` по всему проекту):**
+- **0 ошибок** во всём проекте — структурные проверки (битые `{@link}`, HTML, синтаксис)
+  чисты везде, включая `internal/`.
+- **Публичный API без замечаний:** `dto/`, `api/`, `render/` проходят строгий doclint с
+  нулём предупреждений (типы, компоненты записей через `@param`, методы с `@return`/`@throws`).
+- **Остаются ~100 предупреждений только категории «missing»** (нет комментария/`@param`/
+  `@return`/`@throws`/описания) — все в имплементации и намеренно гасятся `-Xdoclint:all,-missing`:
+  `internal/parser/jackson` (52, Jackson-биндинг-DTO), `internal/anchor` (13),
+  `internal/parser/stax` (9), `internal/reader/fb2` (7), `internal/writer/fb2` (6),
+  `encoding` (6), `internal/sanitizer` (5), `internal/io` (2).
+- [ ] (Опционально) Javadoc для `encoding/` (`EncodingDetector`, `EncodingAwareInputStream`) —
+  пакет не под `internal/`, но является низкоуровневой инфраструктурой; пока не дописан.
+
 ## ⚠️ Частично реализовано
 
 - [ ] `<poem>`/`<date>` — дата стихотворения вычитывается, но в DTO не сохраняется
