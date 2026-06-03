@@ -19,7 +19,12 @@ Build, test, and run all use the Gradle wrapper:
 ./gradlew test --tests "*Fb2BlockParserTest"           # by simple class name pattern
 ./gradlew test --tests "*Fb2WriterTest.someMethod"     # single method
 ./gradlew compileJava            # compile main only
+./gradlew jmh                    # run JMH benchmarks (src/jmh/java)
 ```
+
+Note: `./gradlew build` currently fails on the `:javadoc` task due to pre-existing doclint
+errors in `MixedContentCapture` / `Fb2ImageRefJax` (unrelated to tests). Use `./gradlew test`
+to validate changes.
 
 Lombok is applied via the `io.freefair.lombok` plugin (annotation processing). There is no separate lint task. `maven-publish` is configured but the publication block is commented out.
 
@@ -62,5 +67,5 @@ The book "plays itself" onto a renderer: `BookPlayer` traverses the DTO and emit
 - **Java 21**, immutable records throughout, sealed-style element hierarchies (`BlockElement`, `InlineElement`). Prefer rebuilding DTOs via transformer helpers over introducing mutability.
 - **`internal/` is private implementation** — keep new public surface in `api/`, `dto/`, and `render/`.
 - **Logging** uses SLF4J API only (no bound implementation shipped); tests use `slf4j-simple`.
-- **Tests**: JUnit 5 + AssertJ. Tests are organized with nested `@Nested` classes by feature. The **jqwik** dependency is wired in `build.gradle.kts` for property-based tests (`@Property`), but no `@Property` tests have been written yet; the `.jqwik-database` file is jqwik's failure-replay store.
+- **Tests**: JUnit 5 + AssertJ. Tests are organized with nested `@Nested` classes by feature. **jqwik** powers the property-based and fuzz tests (`Fb2RoundTripPropertyTest`, `Fb2ReaderFuzzTest`); the `.jqwik-database` file is jqwik's failure-replay store. **JMH** benchmarks live in `src/jmh/java` (`me.champeau.jmh` plugin) and run via `./gradlew jmh`.
 - Errors surface as `FictionBookException` / `InvalidFormatException` (use the factory methods on the exception types).

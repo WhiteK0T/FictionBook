@@ -2,6 +2,8 @@ plugins {
     id("java")
     `java-library`
     `maven-publish`
+    // JMH-бенчмарки: исходники в src/jmh/java, запуск через ./gradlew jmh
+    id("me.champeau.jmh") version "0.7.3"
 }
 
 group = "org.tehlab.whitek0t"
@@ -52,6 +54,15 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// JMH: фиксируем версию ядра и задаём «лёгкий» дефолтный прогон. Для точных цифр
+// поднять warmup/iterations/fork прямо в этом блоке.
+jmh {
+    jmhVersion.set("1.37")
+    warmupIterations.set(3)
+    iterations.set(5)
+    fork.set(1)
 }
 
 /*
