@@ -11,6 +11,7 @@ import java.util.List;
  * @param elements inline-содержимое параграфа; копируется в неизменяемый список
  */
 public record Paragraph(List<InlineElement> elements) implements BlockElement {
+    /** Делает защитную неизменяемую копию {@code elements}. */
     public Paragraph {
         elements = List.copyOf(elements);
     }

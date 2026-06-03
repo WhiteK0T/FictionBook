@@ -22,6 +22,7 @@ public record Section(
         List<Section> subSections,
         Map<String, String> metadata
 ) implements BlockElement {
+    /** Делает защитные неизменяемые копии списков и нормализует {@code metadata}. */
     public Section {
         title = List.copyOf(title);
         content = List.copyOf(content);

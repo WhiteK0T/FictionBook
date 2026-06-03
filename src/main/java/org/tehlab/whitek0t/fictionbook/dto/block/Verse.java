@@ -12,6 +12,7 @@ import java.util.List;
  * @see Stanza
  */
 public record Verse(List<InlineElement> elements) implements BlockElement {
+    /** Делает защитную неизменяемую копию {@code elements}. */
     public Verse {
         elements = List.copyOf(elements);
     }

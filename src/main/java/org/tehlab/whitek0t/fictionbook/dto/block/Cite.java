@@ -15,6 +15,7 @@ public record Cite(
         List<BlockElement> content,
         String author
 ) implements BlockElement {
+    /** Делает защитную неизменяемую копию {@code content}. */
     public Cite {
         content = List.copyOf(content);
     }

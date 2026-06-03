@@ -28,6 +28,7 @@ public record FictionBookDto(
         List<BodyDto> bodies,
         Map<String, Resource> resources
 ) {
+    /** Копирует {@code bodies} и сохраняет порядок документа для {@code resources}. */
     public FictionBookDto {
         bodies = List.copyOf(bodies);
         // Сохраняем порядок документа: Map.copyOf даёт неопределённый (зависящий от

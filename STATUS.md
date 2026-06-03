@@ -223,8 +223,7 @@ org.tehlab.whitek0t.fictionbook/
       `FictionBookStreamer`) и рендеринга `render/` (`BookPlayer`, `FictionBookRenderer`,
       `ParagraphStyle`, `ResourceResolver`, `HtmlRenderer`/`PlainTextRenderer`).
 - [x] `./gradlew build` проходит целиком, включая `:javadoc`/`:javadocJar` (0 warnings);
-      под строгим `-Xdoclint:all` пакеты `api/` и `render/` без замечаний, в `dto/` остаются
-      лишь 3 косметических note на компактных конструкторах (параметры покрыты `@param`).
+      под строгим `-Xdoclint:all` пакеты `dto/`, `api/` и `render/` полностью без замечаний.
 
 ## ⚠️ Частично реализовано
 

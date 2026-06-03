@@ -15,6 +15,7 @@ public record BodyDto(
         String name,
         List<Section> sections
 ) {
+    /** Делает защитную неизменяемую копию {@code sections}. */
     public BodyDto {
         sections = List.copyOf(sections);
     }

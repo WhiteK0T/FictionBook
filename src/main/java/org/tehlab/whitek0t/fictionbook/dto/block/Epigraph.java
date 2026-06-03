@@ -15,6 +15,7 @@ public record Epigraph(
         List<BlockElement> content,
         String author
 ) implements BlockElement {
+    /** Делает защитную неизменяемую копию {@code content}. */
     public Epigraph {
         content = List.copyOf(content);
     }
