@@ -21,6 +21,16 @@ tasks.withType<JavaCompile>().configureEach {
     options.release.set(21)
 }
 
+// Javadoc: оставляем строгими структурные проверки doclint (битые {@link}-ссылки,
+// некорректный HTML, синтаксис) — именно они ловят реальные баги документации. Но не
+// требуем javadoc-комментарий на каждый член: большинство классов в internal/ — деталь
+// реализации, описывать каждое поле Jackson-DTO смысла нет. Группа -missing убирает
+// шум «no comment / no @param / no @return / no main description».
+tasks.withType<Javadoc>().configureEach {
+    (options as StandardJavadocDocletOptions)
+        .addBooleanOption("Xdoclint:all,-missing", true)
+}
+
 repositories {
     mavenCentral()
 }
