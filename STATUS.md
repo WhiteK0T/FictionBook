@@ -419,6 +419,7 @@ FictionBookDto clean = custom.sanitize(book);
 6. **PDF/EPUB рендереры**
 7. **CLI-утилита**
 8. **CSS в FB3**
+9. **Интеграция с Elasticsearch** — через PlainTextRenderer
 
 ---
 
