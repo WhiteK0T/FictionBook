@@ -5,6 +5,7 @@ import org.tehlab.whitek0t.fictionbook.exception.FictionBookException;
 import org.tehlab.whitek0t.fictionbook.internal.reader.fb2.Fb2Reader;
 import org.tehlab.whitek0t.fictionbook.internal.reader.fb3.Fb3Reader;
 import org.tehlab.whitek0t.fictionbook.internal.writer.fb2.Fb2Writer;
+import org.tehlab.whitek0t.fictionbook.internal.writer.fb3.Fb3Writer;
 
 import java.nio.file.Path;
 
@@ -12,8 +13,9 @@ import java.nio.file.Path;
  * Единая точка входа библиотеки: чтение и запись книг. Формат (FB2/FB3) определяется
  * автоматически — при чтении по magic bytes/расширению, при записи по расширению файла.
  *
- * <p>Утилитный класс со статическими методами; не инстанцируется. Чтение FB3 поддержано
- * ({@code Fb3Reader}); запись FB3 пока бросает {@link UnsupportedOperationException}.</p>
+ * <p>Утилитный класс со статическими методами; не инстанцируется. Поддержаны чтение и
+ * запись обоих форматов — FB2 ({@code Fb2Reader}/{@code Fb2Writer}) и FB3
+ * ({@code Fb3Reader}/{@code Fb3Writer}).</p>
  */
 public final class FictionBookIO {
 
@@ -73,7 +75,7 @@ public final class FictionBookIO {
             throws FictionBookException {
         switch (format) {
             case FB2 -> new Fb2Writer().write(book, destination);
-            case FB3 -> throw new UnsupportedOperationException("FB3 writer not implemented yet");
+            case FB3 -> new Fb3Writer().write(book, destination);
         }
     }
 }

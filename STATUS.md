@@ -105,8 +105,8 @@ org.tehlab.whitek0t.fictionbook/
 ### Core
 - [x] DTO модель — все immutable Records (3 слоя: `description/`, `block/`, `inline/`)
 - [x] FictionBookIO — единая точка входа (`read`/`write`, switch по формату;
-      чтение FB3 поддержано через `Fb3Reader`, запись FB3 бросает
-      `UnsupportedOperationException`)
+      FB2 и FB3 поддержаны на чтение и запись — `Fb2Reader`/`Fb2Writer`,
+      `Fb3Reader`/`Fb3Writer`)
 - [x] FictionBookFormat — `detect()` по magic bytes (ZIP→FB3, XML→FB2) с fallback
       на расширение (`fromPath`)
 - [x] FictionBookException + InvalidFormatException с богатым набором фабричных
@@ -174,6 +174,21 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Pretty print (настраивается через `setPrettyPrint`)
 - [x] Авто-санитизация перед записью (пайплайн настраивается через `setSanitizerPipeline`)
 - [x] Покрыто `Fb2WriterTest` (19 тестов) + round-trip фикспоинтом (`Fb2RoundTripTest`)
+
+### FB3 Writer
+- [x] Fb3Writer (`internal/writer/fb3/`) — запись `FictionBookDto` в FB3 (OPC/ZIP),
+      зеркально к `Fb3Reader`. Авто-санитизация перед записью, как у FB2-райтера.
+- [x] Генерация частей пакета: `[Content_Types].xml` (Default по расширениям картинок
+      + Override для `description.xml`/`body.xml`), `_rels/.rels` (связь Book),
+      `fb3/description.xml`, `fb3/_rels/description.xml.rels` (body/notes/cover),
+      `fb3/body.xml` (+ `notes.xml`), `fb3/_rels/<тело>.xml.rels` (связи image).
+- [x] `description.xml`: `<title>/<main>`, `<fb3-relations>` (авторы), классификация
+      (жанры), `<lang>`, `<sequence>`, `<annotation>`, id/version из document-info.
+- [x] `body.xml`: `<fb3-body>`/`<section>` с FB3-тегами — `<img>` (как `l:href="rId…"`
+      на OPC-связь), `<blockquote>` (= FB2 `<cite>`); остальные блоки/инлайны как в FB2.
+- [x] Картинки пишутся сырыми байтами (стримом, без base64) в `fb3/img/<id>`.
+- [x] Покрыто `Fb3WriterTest` (6 тестов): round-trip write→read (метаданные, структура
+      тела, картинки, обложка), валидность ZIP-контейнера, фасад `FictionBookIO`.
 
 ### Санитайзеры
 - [x] Sanitizer интерфейс
@@ -276,9 +291,6 @@ org.tehlab.whitek0t.fictionbook/
       cite, epigraph, poem, бинарники).
 
 ## ⏳ В планах (не начато)
-
-### FB3 поддержка
-- [ ] Fb3Writer — `Fb3ExportContext` с UUID-маппингом, генерация `relations.xml`, `[Content_Types].xml`, `core.xml`
 
 ### Streaming API
 - [ ] FictionBookStreamer — интерфейс в `api/` уже есть, но `open()` возвращает
@@ -429,18 +441,17 @@ FictionBookDto clean = custom.sanitize(book);
 # Следующие шаги (приоритеты)
 
 ## Высокий приоритет
-1. **Fb3Writer** — генерация FB3 с UUID-маппингом (Fb3Reader уже реализован)
+1. **FictionBookStreamer** — Streaming API для читалок
 
 ## Средний приоритет
-3. **FictionBookStreamer** — Streaming API для читалок
-4. **Mutable Model** — для удобного редактирования
-5. **JavaFxRenderer** — для настольных читалок
+2. **Mutable Model** — для удобного редактирования
+3. **JavaFxRenderer** — для настольных читалок
 
 ## Низкий приоритет
-6. **PDF/EPUB рендереры**
-7. **CLI-утилита**
-8. **CSS в FB3**
-9. **Интеграция с Elasticsearch** — через PlainTextRenderer
+4. **PDF/EPUB рендереры**
+5. **CLI-утилита**
+6. **CSS в FB3**
+7. **Интеграция с Elasticsearch** — через PlainTextRenderer
 
 ---
 
