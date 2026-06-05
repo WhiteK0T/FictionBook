@@ -69,7 +69,8 @@ public class Fb2BlockParser {
             case "subtitle" -> parseSubtitle(xml);
             case "poem" -> parsePoem(xml, fileName);
             case "table" -> parseTable(xml);
-            case "cite" -> parseCite(xml, fileName);
+            // FB3-алиас: <blockquote> структурно совпадает с FB2 <cite>.
+            case "cite", "blockquote" -> parseCite(xml, tag, fileName);
             case "epigraph" -> parseEpigraph(xml, fileName);
             default -> {
                 skipUnknownElement(xml);
@@ -448,9 +449,13 @@ public class Fb2BlockParser {
     // ========================================================================
 
     /**
-     * Парсит {@code <cite>} с текстом и автором.
+     * Парсит {@code <cite>} (или FB3-алиас {@code <blockquote>}) с текстом и автором.
+     *
+     * @param closingTag локальное имя элемента, по закрытию которого завершается разбор
+     *                   ({@code "cite"} для FB2, {@code "blockquote"} для FB3)
      */
-    private Cite parseCite(XMLStreamReader xml, String fileName) throws XMLStreamException {
+    private Cite parseCite(XMLStreamReader xml, String closingTag, String fileName)
+            throws XMLStreamException {
         String id = xml.getAttributeValue(null, "id");
 
         List<BlockElement> content = new ArrayList<>();
@@ -472,7 +477,7 @@ public class Fb2BlockParser {
                     }
                 }
                 case XMLStreamConstants.END_ELEMENT -> {
-                    if ("cite".equals(xml.getLocalName())) {
+                    if (closingTag.equals(xml.getLocalName())) {
                         return new Cite(id, List.copyOf(content), author);
                     }
                 }
@@ -568,7 +573,8 @@ public class Fb2BlockParser {
                 String type = xml.getAttributeValue(null, "type");
                 yield new LinkBuilder(href, type);
             }
-            case "image" -> {
+            // <image> — FB2, <img> — FB3-алиас (тот же inline-смысл).
+            case "image", "img" -> {
                 // ✅ Используем универсальный метод
                 String href = getAttributeValue(xml, "href");
                 String alt = xml.getAttributeValue(null, "alt");
@@ -648,7 +654,7 @@ public class Fb2BlockParser {
 
     private boolean isBlockTag(String tag) {
         return switch (tag) {
-            case "p", "empty-line", "poem", "table", "subtitle", "cite", "epigraph" -> true;
+            case "p", "empty-line", "poem", "table", "subtitle", "cite", "blockquote", "epigraph" -> true;
             default -> false;
         };
     }
@@ -656,7 +662,7 @@ public class Fb2BlockParser {
     private boolean isInlineTag(String tag) {
         return switch (tag) {
             case "strong", "b", "emphasis", "i", "strikethrough", "s",
-                 "sub", "sup", "a", "image" -> true;
+                 "sub", "sup", "a", "image", "img" -> true;
             default -> false;
         };
     }

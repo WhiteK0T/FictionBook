@@ -105,7 +105,8 @@ org.tehlab.whitek0t.fictionbook/
 ### Core
 - [x] DTO модель — все immutable Records (3 слоя: `description/`, `block/`, `inline/`)
 - [x] FictionBookIO — единая точка входа (`read`/`write`, switch по формату;
-      FB3-ветки бросают `UnsupportedOperationException`)
+      чтение FB3 поддержано через `Fb3Reader`, запись FB3 бросает
+      `UnsupportedOperationException`)
 - [x] FictionBookFormat — `detect()` по magic bytes (ZIP→FB3, XML→FB2) с fallback
       на расширение (`fromPath`)
 - [x] FictionBookException + InvalidFormatException с богатым набором фабричных
@@ -139,6 +140,28 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Eager-загрузка бинарников (base64 decode)
 - [x] Покрыто `Fb2ReaderTest` (27 тестов: `@Nested` Basic / Description / Body,
       несколько `<body>` main+notes), `AuthorTest`, `NodeBuildersTest`
+
+### FB3 чтение
+- [x] Fb3Reader (`internal/reader/fb3/`) — чтение FB3 (OPC/ZIP-контейнер) в тот же
+      `FictionBookDto`, что и FB2. Прощающий режим, как у FB2-ридера.
+- [x] Fb3Package — распаковка ZIP в память (eager), регистронезависимый доступ к
+      частям, разбор `[Content_Types].xml` (Default/Override → MIME-типы).
+- [x] OpcRelationships — навигация по `_rels/*.rels` (книга → `description.xml` →
+      `body.xml` + картинки), разрешение `Target` относительно каталога части.
+- [x] Fb3DescriptionParser — StAX-разбор `description.xml`: `<title>/<main>`, авторы
+      из `<fb3-relations>/<subject link="author">` (с фолбэком на разбор ФИО из
+      `<title>/<main>`), жанры `<fb3-classification>`, `<lang>`, `<sequence>`,
+      `<annotation>`, id/version.
+- [x] Fb3BodyParser — StAX-разбор `body.xml` (`<fb3-body>` → `<section>`),
+      переиспользует `Fb2BlockParser` (локальные имена тегов совпадают с FB2).
+- [x] FB3-алиасы в `Fb2BlockParser`: inline `<img>` (= `<image>`), блок
+      `<blockquote>` (= `<cite>`, с корректным завершающим тегом).
+- [x] Картинки `fb3/img/*` → `Resource` (id = имя файла), ссылки `<img>` (по Id
+      связи или по пути) переписываются на якоря `#id` для единого с FB2 рендеринга.
+      Обложка → `coverImageIds`; тело сносок (связь `/notes`) подключается как
+      `body name="notes"`.
+- [x] Покрыто `Fb3ReaderTest` (13 тестов: `@Nested` Description / Body / Images /
+      API&errors; фикстуры — собранные на лету ZIP-архивы).
 
 ### FB2 Writer
 - [x] Fb2Writer (StAX XMLStreamWriter)
@@ -255,7 +278,6 @@ org.tehlab.whitek0t.fictionbook/
 ## ⏳ В планах (не начато)
 
 ### FB3 поддержка
-- [ ] Fb3Reader — распаковка ZIP, парсинг `relations.xml`, склейка `body.xml` + `notes.xml`
 - [ ] Fb3Writer — `Fb3ExportContext` с UUID-маппингом, генерация `relations.xml`, `[Content_Types].xml`, `core.xml`
 
 ### Streaming API
@@ -407,8 +429,7 @@ FictionBookDto clean = custom.sanitize(book);
 # Следующие шаги (приоритеты)
 
 ## Высокий приоритет
-1. **Fb3Reader** — базовая поддержка FB3 (ZIP + XML)
-2. **Fb3Writer** — генерация FB3 с UUID-маппингом
+1. **Fb3Writer** — генерация FB3 с UUID-маппингом (Fb3Reader уже реализован)
 
 ## Средний приоритет
 3. **FictionBookStreamer** — Streaming API для читалок
