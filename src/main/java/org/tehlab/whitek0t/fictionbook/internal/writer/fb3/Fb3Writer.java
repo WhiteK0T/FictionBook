@@ -24,6 +24,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,6 +78,7 @@ public class Fb3Writer {
 
     private SanitizerPipeline sanitizerPipeline = SanitizerPipeline.standard();
     private boolean prettyPrint = true;
+    private LocalDateTime entryTime = null;
 
     /**
      * Устанавливает пайплайн санитайзеров ({@code null} отключает санитизацию).
@@ -94,6 +96,20 @@ public class Fb3Writer {
      */
     public void setPrettyPrint(boolean prettyPrint) {
         this.prettyPrint = prettyPrint;
+    }
+
+    /**
+     * Задаёт фиксированную метку времени для всех записей ZIP-контейнера.
+     * <p>
+     * По умолчанию ({@code null}) записи получают <b>текущее</b> время — обычное
+     * поведение для прода. Фиксированное значение делает вывод FB3 детерминированным
+     * (воспроизводимым байт-в-байт), что нужно, например, в round-trip тестах или для
+     * reproducible-сборок.
+     *
+     * @param entryTime метка времени записей или {@code null} для текущего времени
+     */
+    public void setEntryTime(LocalDateTime entryTime) {
+        this.entryTime = entryTime;
     }
 
     /**
@@ -689,7 +705,7 @@ public class Fb3Writer {
     // ========================================================================
 
     private void writeImageEntry(ZipOutputStream zip, ImagePart img) throws IOException {
-        zip.putNextEntry(new ZipEntry(img.partName));
+        zip.putNextEntry(entry(img.partName));
         try (InputStream is = img.resource.dataProvider().getInputStream()) {
             is.transferTo(zip);
         }
@@ -726,9 +742,22 @@ public class Fb3Writer {
     }
 
     private void putEntry(ZipOutputStream zip, String name, byte[] data) throws IOException {
-        zip.putNextEntry(new ZipEntry(name));
+        zip.putNextEntry(entry(name));
         zip.write(data);
         zip.closeEntry();
+    }
+
+    /**
+     * Создаёт {@link ZipEntry}. Если задана {@link #setEntryTime(LocalDateTime)} метка
+     * времени — проставляет её (детерминированный вывод); иначе запись получает текущее
+     * время (поведение по умолчанию).
+     */
+    private ZipEntry entry(String name) {
+        ZipEntry e = new ZipEntry(name);
+        if (entryTime != null) {
+            e.setTimeLocal(entryTime);
+        }
+        return e;
     }
 
     private void writeTextElement(XMLStreamWriter xml, String name, String value)
