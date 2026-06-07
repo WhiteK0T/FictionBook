@@ -187,6 +187,10 @@ org.tehlab.whitek0t.fictionbook/
 - [x] `body.xml`: `<fb3-body>`/`<section>` с FB3-тегами — `<img>` (как `l:href="rId…"`
       на OPC-связь), `<blockquote>` (= FB2 `<cite>`); остальные блоки/инлайны как в FB2.
 - [x] Картинки пишутся сырыми байтами (стримом, без base64) в `fb3/img/<id>`.
+- [x] Метка времени ZIP-записей настраивается через `setEntryTime(LocalDateTime)`:
+      по умолчанию (`null`) записи получают текущее время (обычное поведение прода),
+      фиксированное значение даёт детерминированный, воспроизводимый байт-в-байт вывод
+      (нужно для round-trip фикспоинта и reproducible-сборок).
 - [x] Покрыто `Fb3WriterTest` (6 тестов): round-trip write→read (метаданные, структура
       тела, картинки, обложка), валидность ZIP-контейнера, фасад `FictionBookIO`.
 
@@ -240,6 +244,11 @@ org.tehlab.whitek0t.fictionbook/
 ### Тестирование
 - [x] Round-trip фикспоинт-тесты (`Fb2RoundTripTest`: write→read→write байт-в-байт +
       сохранность метаданных, тела, annotation/history, бинарников)
+- [x] Корпусной round-trip на реальных файлах (`CorpusRoundTripTest`, `@TestFactory`):
+      прогоняет все `*.fb2`/`*.fb3` из `src/test/resources/books` по циклу
+      read→write→read→write и проверяет байт-в-байт фикспоинт после первой строгой
+      записи (для FB3 фиксирует время записей через `setEntryTime`). При пустом корпусе
+      не падает. Образцы: `fb2/sample.fb2`, `fb3/sample.fb3` (см. `books/README.md`)
 - [x] Property-based round-trip (`Fb2RoundTripPropertyTest`, jqwik): фикспоинт на
       случайных DTO-деревьях; вскрыл баги порядка `<binary>` и склейки вложенного текста
 - [x] Fuzz-тесты прощающего чтения (`Fb2ReaderFuzzTest`, jqwik): на случайных байтах и
