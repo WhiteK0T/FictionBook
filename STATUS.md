@@ -72,7 +72,7 @@
 
 ```
 org.tehlab.whitek0t.fictionbook/
-├── api/                    # Публичные фасады (FictionBookIO, FictionBookFormat)
+├── api/                    # Публичные фасады (FictionBookIO, FictionBookFormat, BookInfo)
 ├── dto/                    # Immutable Records (FictionBookDto, BodyDto, etc.)
 │   ├── description/        # Метаданные
 │   ├── block/              # Блочные элементы (Section, Paragraph, Poem, Table)
@@ -87,13 +87,16 @@ org.tehlab.whitek0t.fictionbook/
 │   ├── parser/jackson/     # Jax-классы + DescriptionMapper
 │   ├── parser/stax/        # NodeBuilder'ы, Fb2BlockParser, Fb2BodyParser
 │   ├── reader/fb2/         # Fb2Reader (eager base64)
+│   ├── reader/fb3/         # Fb3Reader (OPC/ZIP: Fb3Package, OpcRelationships, …)
 │   ├── writer/fb2/         # Fb2Writer (streaming base64)
+│   ├── writer/fb3/         # Fb3Writer (OPC/ZIP контейнер)
+│   ├── info/               # BookInfoExtractor (сводка BookInfo)
 │   ├── sanitizer/          # 6 санитайзеров + Pipeline + Transformer
 │   ├── anchor/             # AnchorIndex + AnchorIndexBuilder
 │   └── io/                 # ByteCountingInputStream
 ├── encoding/               # EncodingDetector, EncodingAwareInputStream
 ├── exception/              # FictionBookException, InvalidFormatException
-└── util/                   # MimeTypeResolver
+└── util/                   # MimeTypeResolver, Fb2GenreResolver
 ```
 
 ---
@@ -107,6 +110,14 @@ org.tehlab.whitek0t.fictionbook/
 - [x] FictionBookIO — единая точка входа (`read`/`write`, switch по формату;
       FB2 и FB3 поддержаны на чтение и запись — `Fb2Reader`/`Fb2Writer`,
       `Fb3Reader`/`Fb3Writer`)
+- [x] FictionBookIO.info(Path)/info(dto) → `BookInfo` (`api/`) — краткая сводка о
+      книге: название, авторы (`authorsLine()`), жанры (коды + человекочитаемые
+      `genreNames()`), цикл, год/издательство/город/ISBN, язык, аннотация (плоский
+      текст + структурно), счётчики символов/слов тела, обложка (`Resource`),
+      внешние ссылки книги (`links` — href `<a>` из аннотации и тела, distinct;
+      внутренние якоря `#…` отфильтрованы). `toDisplayString()` — многострочный
+      человекочитаемый вид (пустые поля опущены). Логика обхода —
+      `internal/info/BookInfoExtractor`. Покрыто `BookInfoTest`
 - [x] FictionBookFormat — `detect()` по magic bytes (ZIP→FB3, XML→FB2) с fallback
       на расширение (`fromPath`)
 - [x] FictionBookException + InvalidFormatException с богатым набором фабричных
@@ -238,6 +249,9 @@ org.tehlab.whitek0t.fictionbook/
       ссылки в новой вкладке, режимы wrap-in-document / фрагмент)
 - [x] PlainTextRenderer (подсчёт слов, превью, статистика, опциональный alt картинок)
 - [x] MimeTypeResolver (MIME → file extension; лежит в `util/`, не в `render/`)
+- [x] Fb2GenreResolver (`util/`) — коды жанров FB2 → человекочитаемые названия
+      (`humanize`), неизвестный код возвращается как есть. Покрыто
+      `Fb2GenreResolverTest`
 - [x] Покрыто `RenderersTest` (13 тестов: экранирование, форматирование, ссылки,
       ParagraphStyle, оба рендерера, все режимы `ResourceResolver`)
 

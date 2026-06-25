@@ -52,6 +52,29 @@ public final class FictionBookIO {
     }
 
     /**
+     * Читает книгу и возвращает краткую сводку {@link BookInfo} (с именем файла).
+     *
+     * @param file путь к файлу книги
+     * @return сводка о книге
+     * @throws FictionBookException при ошибке определения формата, чтения или разбора
+     */
+    public static BookInfo info(Path file) throws FictionBookException {
+        FictionBookDto book = read(file);
+        return BookInfo.from(book, file.getFileName().toString());
+    }
+
+    /**
+     * Возвращает краткую сводку {@link BookInfo} по уже разобранной книге
+     * (без имени файла).
+     *
+     * @param book разобранная книга
+     * @return сводка о книге
+     */
+    public static BookInfo info(FictionBookDto book) {
+        return BookInfo.from(book);
+    }
+
+    /**
      * Записывает книгу в файл; формат определяется по расширению назначения.
      *
      * @param book        книга для записи
