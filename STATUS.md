@@ -58,13 +58,13 @@
 | Компонент | Выбор | Версия |
 |---|---|---|
 | Java | JDK | 21+ |
-| XML (мета) | Jackson XML | 2.17.1 |
+| XML (мета) | Jackson XML | 2.21.3 |
 | XML (тело) | StAX (Woodstox) | Встроен в Jackson |
 | ZIP | java.util.zip | JDK |
 | Кодировки | juniversalchardet | 1.0.3 |
 | Логирование | SLF4J API | 2.0.13 |
-| Тесты | JUnit 5 + AssertJ + jqwik | 5.10.2 / 3.25.3 / 1.8.4 |
-| Сборка | Gradle (Kotlin DSL) | 8.x |
+| Тесты | JUnit 5 + AssertJ + jqwik | 5.10.2 / 3.27.7 / 1.8.4 |
+| Сборка | Gradle (Kotlin DSL) | 9.6.0 |
 
 ---
 
@@ -72,7 +72,9 @@
 
 ```
 org.tehlab.whitek0t.fictionbook/
-├── api/                    # Публичные фасады (FictionBookIO, FictionBookFormat, BookInfo)
+├── api/                    # Публичные фасады (FictionBookIO, FictionBookFormat,
+│                           #   BookInfo, FictionBookStreamer)
+├── cli/                    # FictionBookCli — конвертер FB2/FB3 → txt/html (launcher fb)
 ├── dto/                    # Immutable Records (FictionBookDto, BodyDto, etc.)
 │   ├── description/        # Метаданные
 │   ├── block/              # Блочные элементы (Section, Paragraph, Poem, Table)
@@ -258,7 +260,8 @@ org.tehlab.whitek0t.fictionbook/
 ### Рендеринг
 - [x] FictionBookRenderer интерфейс (Command Pattern)
 - [x] BookPlayer (с контекстным стеком для ParagraphStyle)
-- [x] ParagraphStyle (13 стилей: NORMAL, SECTION_TITLE, CITATION, VERSE, etc.)
+- [x] ParagraphStyle (12 стилей: NORMAL, SECTION_TITLE, SUBTITLE, CITATION,
+      TEXT_AUTHOR, EPIGRAPH, VERSE, POEM_AUTHOR, DATE, ANNOTATION, IMAGE_CAPTION, NOTE)
 - [x] ResourceResolver (placeholder, base64DataUri, saveToDirectory)
 - [x] Блочные `<image>` (`BlockImage`, прямой ребёнок `<section>`/`<cite>`/
       `<epigraph>`/`<td>`) — разбор (`Fb2BlockParser`/`Fb3BodyParser`), запись
@@ -514,10 +517,10 @@ FictionBookDto clean = custom.sanitize(book);
 
 ## Низкий приоритет
 3. **PDF/EPUB рендереры**
-4. **CLI-утилита**
-5. **CSS в FB3**
-6. **Интеграция с Elasticsearch** — через PlainTextRenderer
-7. **Стриминг FB3** + byte-offset seek для `Fb2Streamer`
+4. **CSS в FB3**
+5. **Интеграция с Elasticsearch** — через PlainTextRenderer
+6. **Стриминг FB3** + byte-offset seek для `Fb2Streamer`
+7. **CLI** (сделан базовый конвертер): запись в FB3 (fb2↔fb3) и пакетный режим
 
 ---
 
