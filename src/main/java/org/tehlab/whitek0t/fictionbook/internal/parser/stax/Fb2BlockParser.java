@@ -72,6 +72,8 @@ public class Fb2BlockParser {
             // FB3-алиас: <blockquote> структурно совпадает с FB2 <cite>.
             case "cite", "blockquote" -> parseCite(xml, tag, fileName);
             case "epigraph" -> parseEpigraph(xml, fileName);
+            // Блочная картинка: <image>/<img> как прямой ребёнок блока (не внутри <p>).
+            case "image", "img" -> parseBlockImage(xml);
             default -> {
                 skipUnknownElement(xml);
                 yield null;
@@ -327,9 +329,7 @@ public class Fb2BlockParser {
                     stack.push(child);
                 }
                 case XMLStreamConstants.CHARACTERS, XMLStreamConstants.CDATA,
-                     XMLStreamConstants.SPACE -> {
-                    stack.peek().appendText(xml.getText());
-                }
+                     XMLStreamConstants.SPACE -> stack.peek().appendText(xml.getText());
                 case XMLStreamConstants.END_ELEMENT -> {
                     if ("v".equals(xml.getLocalName()) && stack.size() == 1) {
                         return (Verse) stack.pop().build();
@@ -430,9 +430,7 @@ public class Fb2BlockParser {
                     }
                 }
                 case XMLStreamConstants.CHARACTERS, XMLStreamConstants.CDATA,
-                     XMLStreamConstants.SPACE -> {
-                    builder.appendText(xml.getText());
-                }
+                     XMLStreamConstants.SPACE -> builder.appendText(xml.getText());
                 case XMLStreamConstants.END_ELEMENT -> {
                     String tag = xml.getLocalName();
                     if ("td".equals(tag) || "th".equals(tag)) {
@@ -469,7 +467,7 @@ public class Fb2BlockParser {
                     switch (tag) {
                         case "text-author" ->
                                 author = readTextContent(xml, "text-author");
-                        case "p", "empty-line", "poem", "table", "subtitle" -> {
+                        case "p", "empty-line", "poem", "table", "subtitle", "image", "img" -> {
                             BlockElement block = parseBlock(xml, tag, fileName);
                             if (block != null) content.add(block);
                         }
@@ -503,7 +501,7 @@ public class Fb2BlockParser {
                     switch (tag) {
                         case "text-author" ->
                                 author = readTextContent(xml, "text-author");
-                        case "p", "empty-line", "poem", "table", "subtitle" -> {
+                        case "p", "empty-line", "poem", "table", "subtitle", "image", "img" -> {
                             BlockElement block = parseBlock(xml, tag, fileName);
                             if (block != null) content.add(block);
                         }
@@ -518,6 +516,18 @@ public class Fb2BlockParser {
             }
         }
         return new Epigraph(id, List.copyOf(content), author);
+    }
+
+    /**
+     * Парсит блочную картинку {@code <image>}/{@code <img>} (пустой элемент).
+     * Ридер стоит на START_ELEMENT; после возврата спозиционирован за END_ELEMENT.
+     */
+    private BlockImage parseBlockImage(XMLStreamReader xml) throws XMLStreamException {
+        String href = getAttributeValue(xml, "href");
+        String alt = xml.getAttributeValue(null, "alt");
+        // <image> не имеет дочерних элементов — проматываем до закрывающего тега.
+        skipUnknownElement(xml);
+        return new BlockImage(href, alt);
     }
 
     // ========================================================================
@@ -601,9 +611,7 @@ public class Fb2BlockParser {
                     }
                 }
                 case XMLStreamConstants.CHARACTERS, XMLStreamConstants.CDATA,
-                     XMLStreamConstants.SPACE -> {
-                    builder.appendText(xml.getText());
-                }
+                     XMLStreamConstants.SPACE -> builder.appendText(xml.getText());
                 case XMLStreamConstants.END_ELEMENT -> {
                     if (tag.equals(xml.getLocalName())) {
                         return builder.build();
@@ -654,7 +662,8 @@ public class Fb2BlockParser {
 
     private boolean isBlockTag(String tag) {
         return switch (tag) {
-            case "p", "empty-line", "poem", "table", "subtitle", "cite", "blockquote", "epigraph" -> true;
+            case "p", "empty-line", "poem", "table", "subtitle", "cite", "blockquote",
+                 "epigraph", "image", "img" -> true;
             default -> false;
         };
     }

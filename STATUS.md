@@ -260,6 +260,12 @@ org.tehlab.whitek0t.fictionbook/
 - [x] BookPlayer (с контекстным стеком для ParagraphStyle)
 - [x] ParagraphStyle (13 стилей: NORMAL, SECTION_TITLE, CITATION, VERSE, etc.)
 - [x] ResourceResolver (placeholder, base64DataUri, saveToDirectory)
+- [x] Блочные `<image>` (`BlockImage`, прямой ребёнок `<section>`/`<cite>`/
+      `<epigraph>`/`<td>`) — разбор (`Fb2BlockParser`/`Fb3BodyParser`), запись
+      (FB2 `<image>`, FB3 `<img>` с relId), рендеринг (`BookPlayer` → то же событие
+      `image`, что и inline `ImageRef`) и чистка битых ссылок
+      (`OrphanedImageCleaner` → `<p>[Image Missing: …]</p>`). Покрыто `BlockImageTest`
+      (разбор, round-trip + фикспоинт, HTML/текст, санитайзер)
 - [x] HtmlRenderer (полный HTML5 с CSS, builder API, экранирование, внешние
       ссылки в новой вкладке, режимы wrap-in-document / фрагмент)
 - [x] PlainTextRenderer (подсчёт слов, превью, статистика, опциональный alt картинок)
@@ -269,6 +275,26 @@ org.tehlab.whitek0t.fictionbook/
       `Fb2GenreResolverTest`
 - [x] Покрыто `RenderersTest` (13 тестов: экранирование, форматирование, ссылки,
       ParagraphStyle, оба рендерера, все режимы `ResourceResolver`)
+
+### CLI-утилита
+- [x] `cli/FictionBookCli` — консольная конвертация FB2/FB3 → `txt`/`html`.
+      Единственная точка входа-приложение в проекте-библиотеке: только связывает
+      публичные фасады (`FictionBookIO`, `BookPlayer`, рендереры), новой логики
+      разбора/рендеринга не вводит.
+- [x] Аргументы: позиционные `<вход> [выход]`, `-f/--format txt|html`,
+      `-o/--output` (`-` → stdout), `--images embed|extract|none`, `--no-wrap`
+      (HTML-фрагмент), `-h/--help`, `-v/--version`. Формат выводится из расширения
+      выхода, иначе `txt`; выход по умолчанию — рядом с входом с новым расширением.
+- [x] Картинки в HTML: `embed` (base64), `extract` (в папку `<имя>_files`),
+      `none` (placeholder). При выводе в stdout `extract` деградирует до `embed`.
+- [x] Плагин Gradle `application` (`mainClass = …cli.FictionBookCli`,
+      `applicationName = "fb"`): запуск `./gradlew run --args="…"`, дистрибутив
+      `./gradlew installDist` → `build/install/fb/bin/fb`. Новых зависимостей нет
+      (ручной разбор аргументов).
+- [x] Покрыто `FictionBookCliTest` (10 тестов: разбор аргументов и коды возврата,
+      txt в stdout/файл, html из расширения, `--no-wrap`, режимы картинок
+      embed/extract). Картинки конвертируются и инлайновые (`<p><image/></p>`), и
+      блочные (`<image>` прямым ребёнком секции — см. `BlockImage`).
 
 ### Тестирование
 - [x] Round-trip фикспоинт-тесты (`Fb2RoundTripTest`: write→read→write байт-в-байт +
@@ -346,7 +372,8 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
 
 ### Инфраструктура
-- [ ] CLI-утилита — конвертер fb2↔fb3↔html
+- [x] CLI-утилита — конвертер FB2/FB3 → txt/html (`cli/FictionBookCli`, см.
+      «Полностью реализовано»). Осталось: запись в FB3 (fb2↔fb3) и пакетный режим.
 - [ ] Каталогизатор — пакетная обработка библиотек
 - [ ] Интеграция с Elasticsearch — через PlainTextRenderer
 - [ ] CI/CD (GitHub Actions)

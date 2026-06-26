@@ -3,17 +3,23 @@ package org.tehlab.whitek0t.fictionbook.internal.sanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tehlab.whitek0t.fictionbook.dto.FictionBookDto;
+import org.tehlab.whitek0t.fictionbook.dto.block.BlockElement;
+import org.tehlab.whitek0t.fictionbook.dto.block.BlockImage;
+import org.tehlab.whitek0t.fictionbook.dto.block.Paragraph;
 import org.tehlab.whitek0t.fictionbook.dto.inline.ImageRef;
 import org.tehlab.whitek0t.fictionbook.dto.inline.InlineElement;
 import org.tehlab.whitek0t.fictionbook.dto.inline.Text;
 
+import java.util.List;
 import java.util.Set;
 
 /**
  * Обрабатывает ссылки на несуществующие ресурсы (картинки).
  *
  * <p>Если {@code <image l:href="#cover"/>} ссылается на несуществующий
- * бинарник, заменяет ссылку на текстовую метку {@code [Image Missing: #cover]}.</p>
+ * бинарник, заменяет ссылку на текстовую метку {@code [Image Missing: #cover]} —
+ * для inline ({@link ImageRef}) и для блочной ({@link BlockImage}, заворачивается
+ * в {@code <p>}) картинки.</p>
  */
 public class OrphanedImageCleaner implements Sanitizer {
 
@@ -25,7 +31,33 @@ public class OrphanedImageCleaner implements Sanitizer {
 
         return FictionBookDtoTransformer.transform(book)
                 .onInlineElement(inline -> handleImageRef(inline, existingIds))
+                .onBlockElement(block -> handleBlockImage(block, existingIds))
                 .apply();
+    }
+
+    private BlockElement handleBlockImage(BlockElement block, Set<String> existingIds) {
+        if (!(block instanceof BlockImage img)) {
+            return block;
+        }
+
+        String href = img.href();
+        if (href == null) {
+            log.warn("BlockImage without href, replacing with placeholder");
+            return new Paragraph(List.of(new Text("[Image]")));
+        }
+
+        String id = extractIdFromHref(href);
+        if (id == null) {
+            // Внешняя ссылка — не трогаем
+            return block;
+        }
+
+        if (!existingIds.contains(id)) {
+            log.debug("Broken block image reference: {} (not found in resources)", href);
+            return new Paragraph(List.of(new Text("[Image Missing: " + href + "]")));
+        }
+
+        return block;
     }
 
     private InlineElement handleImageRef(InlineElement inline, Set<String> existingIds) {

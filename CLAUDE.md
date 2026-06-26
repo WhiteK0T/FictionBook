@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-A Java 21 library for reading, writing, sanitizing, and rendering FictionBook e-book files (FB2 today; FB3 planned). The core idea: parse any (often "dirty") FB2 into one immutable domain model (`FictionBookDto`), then render or write it back out in a strictly-valid form. There is no application entry point — this is a library consumed via the `api/` facades.
+A Java 21 library for reading, writing, sanitizing, and rendering FictionBook e-book files (FB2 today; FB3 planned). The core idea: parse any (often "dirty") FB2 into one immutable domain model (`FictionBookDto`), then render or write it back out in a strictly-valid form. This is primarily a library consumed via the `api/` facades. There is one thin entry-point application — `cli/FictionBookCli`, a FB2/FB3 → txt/html converter that only wires the public facades together; the Gradle `application` plugin exposes it via `./gradlew run` / `installDist` (launcher name `fb`).
 
 Note: most of the design docs in the repo root are in Russian (`Архитектура проекта.md` = architecture, `Примеры использования.md` = usage cookbook, `STATUS.md` = full status/ADR log, `Changelog.md`). `STATUS.md` is the authoritative living status document — check it for what is done vs. planned before assuming a feature exists.
 
@@ -20,6 +20,8 @@ Build, test, and run all use the Gradle wrapper:
 ./gradlew test --tests "*Fb2WriterTest.someMethod"     # single method
 ./gradlew compileJava            # compile main only
 ./gradlew jmh                    # run JMH benchmarks (src/jmh/java)
+./gradlew run --args="book.fb2 -f html"   # run the CLI converter (cli/FictionBookCli)
+./gradlew installDist            # build runnable distribution → build/install/fb/bin/fb
 ```
 
 Lombok is applied via the `io.freefair.lombok` plugin (annotation processing). There is no separate lint task. `maven-publish` is configured but the publication block is commented out.

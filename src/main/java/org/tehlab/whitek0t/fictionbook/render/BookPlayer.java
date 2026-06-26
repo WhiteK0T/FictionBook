@@ -142,26 +142,35 @@ public class BookPlayer {
      * @param block блочный элемент; {@code null} безопасно игнорируется
      */
     public void playBlock(BlockElement block) {
-        if (block == null) {
-            return;
+        switch (block) {
+            case null -> {
+                return;
+            }
+            case Paragraph p -> playParagraph(p);
+            case EmptyLine emptyLine -> renderer.emptyLine();
+            case Poem poem -> playPoem(poem);
+            case Table table -> playTable(table);
+            case Cite cite -> playCite(cite);
+            case Epigraph epigraph -> playEpigraph(epigraph);
+            case BlockImage image -> playBlockImage(image);
+            case Section section -> playSection(section);
+            default -> {
+            }
         }
 
-        if (block instanceof Paragraph p) {
-            playParagraph(p);
-        } else if (block instanceof EmptyLine) {
-            renderer.emptyLine();
-        } else if (block instanceof Poem poem) {
-            playPoem(poem);
-        } else if (block instanceof Table table) {
-            playTable(table);
-        } else if (block instanceof Cite cite) {
-            playCite(cite);
-        } else if (block instanceof Epigraph epigraph) {
-            playEpigraph(epigraph);
-        } else if (block instanceof Section section) {
-            playSection(section);
-        }
         // Добавляйте сюда другие типы блоков по мере расширения модели
+    }
+
+    /**
+     * Проигрывает блочную картинку: резолвит ресурс через lookup (как и для inline)
+     * и эмитит то же событие {@link FictionBookRenderer#image}.
+     */
+    private void playBlockImage(BlockImage image) {
+        Resource resource = null;
+        if (resourceLookup != null && image.href() != null) {
+            resource = resourceLookup.lookup(image.href());
+        }
+        renderer.image(resource, image.alt());
     }
 
     /**
@@ -349,27 +358,22 @@ public class BookPlayer {
      * @param inline inline-элемент; {@code null} безопасно игнорируется
      */
     public void playInline(InlineElement inline) {
-        if (inline == null) {
-            return;
+        switch (inline) {
+            case null -> {
+                return;
+            }
+            case Text text -> playText(text);
+            case Strong strong -> playStrong(strong);
+            case Emphasis emphasis -> playEmphasis(emphasis);
+            case Strikethrough strikethrough -> playStrikethrough(strikethrough);
+            case Link link -> playLink(link);
+            case ImageRef imageRef -> playImageRef(imageRef);
+            case Sub sub -> playSub(sub);
+            case Sup sup -> playSup(sup);
+            default -> {
+            }
         }
 
-        if (inline instanceof Text text) {
-            playText(text);
-        } else if (inline instanceof Strong strong) {
-            playStrong(strong);
-        } else if (inline instanceof Emphasis emphasis) {
-            playEmphasis(emphasis);
-        } else if (inline instanceof Strikethrough strikethrough) {
-            playStrikethrough(strikethrough);
-        } else if (inline instanceof Link link) {
-            playLink(link);
-        } else if (inline instanceof ImageRef imageRef) {
-            playImageRef(imageRef);
-        } else if (inline instanceof Sub sub) {
-            playSub(sub);
-        } else if (inline instanceof Sup sup) {
-            playSup(sup);
-        }
         // Добавляйте сюда другие типы инлайнов по мере расширения модели
     }
 

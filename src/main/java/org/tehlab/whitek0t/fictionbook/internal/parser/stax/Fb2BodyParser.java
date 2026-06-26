@@ -90,7 +90,8 @@ public class Fb2BodyParser {
                         case "title" -> title.addAll(blockParser.parseBlockContainer(xml, "title", fileName));
                         case "section" -> subSections.add(parseSection(xml, fileName));
                         // ✅ Используем parseBlock для всех блочных элементов
-                        case "p", "empty-line", "poem", "table", "subtitle", "cite", "epigraph" -> {
+                        case "p", "empty-line", "poem", "table", "subtitle", "cite", "epigraph",
+                             "image", "img" -> {
                             BlockElement block = blockParser.parseBlock(xml, tag, fileName);
                             if (block != null) {
                                 content.add(block);

@@ -2,8 +2,17 @@ plugins {
     id("java")
     `java-library`
     `maven-publish`
+    // CLI-утилита конвертации (org.tehlab.whitek0t.fictionbook.cli.FictionBookCli):
+    // даёт задачи run/installDist. Сама библиотека остаётся библиотекой —
+    // приложение лишь связывает публичные фасады.
+    application
     // JMH-бенчмарки: исходники в src/jmh/java, запуск через ./gradlew jmh
     id("me.champeau.jmh") version "0.7.3"
+}
+
+application {
+    mainClass.set("org.tehlab.whitek0t.fictionbook.cli.FictionBookCli")
+    applicationName = "fb"
 }
 
 group = "org.tehlab.whitek0t"

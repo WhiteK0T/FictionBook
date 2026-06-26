@@ -357,24 +357,36 @@ public class Fb2Writer {
     // ========================================================================
 
     private void writeBlock(XMLStreamWriter xml, BlockElement block) throws XMLStreamException {
-        if (block == null) return;
-
-        if (block instanceof Paragraph p) {
-            writeParagraph(xml, p);
-        } else if (block instanceof EmptyLine) {
-            xml.writeEmptyElement("empty-line");
-            writeNewline(xml);
-        } else if (block instanceof Poem poem) {
-            writePoem(xml, poem);
-        } else if (block instanceof Table table) {
-            writeTable(xml, table);
-        } else if (block instanceof Cite cite) {
-            writeCite(xml, cite);
-        } else if (block instanceof Epigraph epigraph) {
-            writeEpigraph(xml, epigraph);
-        } else if (block instanceof Section section) {
-            writeSection(xml, section);
+        switch (block) {
+            case null -> {
+                return;
+            }
+            case Paragraph p -> writeParagraph(xml, p);
+            case EmptyLine emptyLine -> {
+                xml.writeEmptyElement("empty-line");
+                writeNewline(xml);
+            }
+            case Poem poem -> writePoem(xml, poem);
+            case Table table -> writeTable(xml, table);
+            case Cite cite -> writeCite(xml, cite);
+            case Epigraph epigraph -> writeEpigraph(xml, epigraph);
+            case BlockImage image -> writeBlockImage(xml, image);
+            case Section section -> writeSection(xml, section);
+            default -> {
+            }
         }
+
+    }
+
+    private void writeBlockImage(XMLStreamWriter xml, BlockImage img) throws XMLStreamException {
+        xml.writeEmptyElement("image");
+        if (img.href() != null) {
+            xml.writeAttribute("l:href", img.href());
+        }
+        if (img.alt() != null && !img.alt().isBlank()) {
+            xml.writeAttribute("alt", img.alt());
+        }
+        writeNewline(xml);
     }
 
     private void writeParagraph(XMLStreamWriter xml, Paragraph p) throws XMLStreamException {
@@ -529,45 +541,52 @@ public class Fb2Writer {
     // ========================================================================
 
     private void writeInline(XMLStreamWriter xml, InlineElement inline) throws XMLStreamException {
-        if (inline == null) return;
-
-        if (inline instanceof Text t) {
-            xml.writeCharacters(t.value());
-        } else if (inline instanceof Strong s) {
-            xml.writeStartElement("strong");
-            for (InlineElement e : s.elements()) {
-                writeInline(xml, e);
+        switch (inline) {
+            case null -> {
+                return;
             }
-            xml.writeEndElement();
-        } else if (inline instanceof Emphasis e) {
-            xml.writeStartElement("emphasis");
-            for (InlineElement el : e.elements()) {
-                writeInline(xml, el);
+            case Text t -> xml.writeCharacters(t.value());
+            case Strong s -> {
+                xml.writeStartElement("strong");
+                for (InlineElement e : s.elements()) {
+                    writeInline(xml, e);
+                }
+                xml.writeEndElement();
             }
-            xml.writeEndElement();
-        } else if (inline instanceof Strikethrough s) {
-            xml.writeStartElement("strikethrough");
-            for (InlineElement e : s.elements()) {
-                writeInline(xml, e);
+            case Emphasis e -> {
+                xml.writeStartElement("emphasis");
+                for (InlineElement el : e.elements()) {
+                    writeInline(xml, el);
+                }
+                xml.writeEndElement();
             }
-            xml.writeEndElement();
-        } else if (inline instanceof Sub s) {
-            xml.writeStartElement("sub");
-            for (InlineElement e : s.elements()) {
-                writeInline(xml, e);
+            case Strikethrough s -> {
+                xml.writeStartElement("strikethrough");
+                for (InlineElement e : s.elements()) {
+                    writeInline(xml, e);
+                }
+                xml.writeEndElement();
             }
-            xml.writeEndElement();
-        } else if (inline instanceof Sup s) {
-            xml.writeStartElement("sup");
-            for (InlineElement e : s.elements()) {
-                writeInline(xml, e);
+            case Sub s -> {
+                xml.writeStartElement("sub");
+                for (InlineElement e : s.elements()) {
+                    writeInline(xml, e);
+                }
+                xml.writeEndElement();
             }
-            xml.writeEndElement();
-        } else if (inline instanceof Link l) {
-            writeLink(xml, l);
-        } else if (inline instanceof ImageRef img) {
-            writeImageRef(xml, img);
+            case Sup s -> {
+                xml.writeStartElement("sup");
+                for (InlineElement e : s.elements()) {
+                    writeInline(xml, e);
+                }
+                xml.writeEndElement();
+            }
+            case Link l -> writeLink(xml, l);
+            case ImageRef img -> writeImageRef(xml, img);
+            default -> {
+            }
         }
+
     }
 
     private void writeLink(XMLStreamWriter xml, Link link) throws XMLStreamException {

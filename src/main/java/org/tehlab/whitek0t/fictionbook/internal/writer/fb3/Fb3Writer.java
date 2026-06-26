@@ -495,24 +495,41 @@ public class Fb3Writer {
 
     private void writeBlock(XMLStreamWriter xml, BlockElement block, Map<String, ImagePart> images)
             throws XMLStreamException {
-        if (block == null) return;
-
-        if (block instanceof Paragraph p) {
-            writeContainerTag(xml, "p", p.elements(), images);
-        } else if (block instanceof EmptyLine) {
-            xml.writeEmptyElement("empty-line");
-            nl(xml);
-        } else if (block instanceof Poem poem) {
-            writePoem(xml, poem, images);
-        } else if (block instanceof Table table) {
-            writeTable(xml, table, images);
-        } else if (block instanceof Cite cite) {
-            writeCite(xml, cite, images);
-        } else if (block instanceof Epigraph epigraph) {
-            writeEpigraph(xml, epigraph, images);
-        } else if (block instanceof Section section) {
-            writeSection(xml, section, images);
+        switch (block) {
+            case null -> {
+                return;
+            }
+            case Paragraph p -> writeContainerTag(xml, "p", p.elements(), images);
+            case EmptyLine emptyLine -> {
+                xml.writeEmptyElement("empty-line");
+                nl(xml);
+            }
+            case Poem poem -> writePoem(xml, poem, images);
+            case Table table -> writeTable(xml, table, images);
+            case Cite cite -> writeCite(xml, cite, images);
+            case Epigraph epigraph -> writeEpigraph(xml, epigraph, images);
+            case BlockImage image -> writeBlockImage(xml, image, images);
+            case Section section -> writeSection(xml, section, images);
+            default -> {
+            }
         }
+
+    }
+
+    /** Записывает блочную картинку как FB3 {@code <img>} с relId OPC-связи. */
+    private void writeBlockImage(XMLStreamWriter xml, BlockImage img, Map<String, ImagePart> images)
+            throws XMLStreamException {
+        xml.writeEmptyElement("img");
+        String relId = resolveImageRel(img.href(), images);
+        if (relId != null) {
+            xml.writeAttribute("l:href", relId);
+        } else if (img.href() != null) {
+            xml.writeAttribute("l:href", img.href());
+        }
+        if (img.alt() != null && !img.alt().isBlank()) {
+            xml.writeAttribute("alt", img.alt());
+        }
+        nl(xml);
     }
 
     /** Записывает простой контейнер с инлайн-содержимым ({@code <p>}, {@code <v>}, {@code <subtitle>}). */
@@ -638,35 +655,34 @@ public class Fb3Writer {
 
     private void writeInline(XMLStreamWriter xml, InlineElement inline, Map<String, ImagePart> images)
             throws XMLStreamException {
-        if (inline == null) return;
-
-        if (inline instanceof Text t) {
-            xml.writeCharacters(t.value());
-        } else if (inline instanceof Strong s) {
-            writeInlineContainer(xml, "strong", s.elements(), images);
-        } else if (inline instanceof Emphasis e) {
-            writeInlineContainer(xml, "emphasis", e.elements(), images);
-        } else if (inline instanceof Strikethrough s) {
-            writeInlineContainer(xml, "strikethrough", s.elements(), images);
-        } else if (inline instanceof Sub s) {
-            writeInlineContainer(xml, "sub", s.elements(), images);
-        } else if (inline instanceof Sup s) {
-            writeInlineContainer(xml, "sup", s.elements(), images);
-        } else if (inline instanceof Link l) {
-            xml.writeStartElement("a");
-            if (l.href() != null) {
-                xml.writeAttribute("l:href", l.href());
+        switch (inline) {
+            case null -> {
+                return;
             }
-            if (l.type() != null && !l.type().isBlank()) {
-                xml.writeAttribute("type", l.type());
+            case Text t -> xml.writeCharacters(t.value());
+            case Strong s -> writeInlineContainer(xml, "strong", s.elements(), images);
+            case Emphasis e -> writeInlineContainer(xml, "emphasis", e.elements(), images);
+            case Strikethrough s -> writeInlineContainer(xml, "strikethrough", s.elements(), images);
+            case Sub s -> writeInlineContainer(xml, "sub", s.elements(), images);
+            case Sup s -> writeInlineContainer(xml, "sup", s.elements(), images);
+            case Link l -> {
+                xml.writeStartElement("a");
+                if (l.href() != null) {
+                    xml.writeAttribute("l:href", l.href());
+                }
+                if (l.type() != null && !l.type().isBlank()) {
+                    xml.writeAttribute("type", l.type());
+                }
+                for (InlineElement e : l.elements()) {
+                    writeInline(xml, e, images);
+                }
+                xml.writeEndElement();
             }
-            for (InlineElement e : l.elements()) {
-                writeInline(xml, e, images);
+            case ImageRef img -> writeImageRef(xml, img, images);
+            default -> {
             }
-            xml.writeEndElement();
-        } else if (inline instanceof ImageRef img) {
-            writeImageRef(xml, img, images);
         }
+
     }
 
     private void writeInlineContainer(XMLStreamWriter xml, String tag, List<InlineElement> elements,

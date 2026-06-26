@@ -91,8 +91,7 @@ final class Fb3BodyParser {
         }
     }
 
-    private Section parseSection(XMLStreamReader r, String fileName)
-            throws XMLStreamException, FictionBookException {
+    private Section parseSection(XMLStreamReader r, String fileName) throws XMLStreamException {
 
         String id = r.getAttributeValue(null, "id");
 
@@ -109,7 +108,7 @@ final class Fb3BodyParser {
                         case "title" -> title.addAll(blockParser.parseBlockContainer(r, "title", fileName));
                         case "section" -> subSections.add(parseSection(r, fileName));
                         case "p", "empty-line", "poem", "table",
-                             "subtitle", "cite", "blockquote", "epigraph" -> {
+                             "subtitle", "cite", "blockquote", "epigraph", "image", "img" -> {
                             BlockElement block = blockParser.parseBlock(r, tag, fileName);
                             if (block != null) {
                                 content.add(block);
