@@ -121,8 +121,9 @@ class FictionBookCliTest {
         void stdout() throws Exception {
             Result r = invoke(SAMPLE.toString(), "-o", "-");
             assertThat(r.code()).isZero();
-            // Рендерится тело книги (заголовок книги — метаданные, в <body> не входит).
-            assertThat(r.out()).contains("Глава первая", "Заключительный абзац рассказа");
+            // Шапка из метаданных (название) + тело книги.
+            assertThat(r.out()).contains(
+                    "Образцовый рассказ", "Глава первая", "Заключительный абзац рассказа");
             // В stdout не должно быть HTML-тегов.
             assertThat(r.out()).doesNotContain("<p>", "<section");
         }
@@ -195,6 +196,37 @@ class FictionBookCliTest {
 
             assertThat(r.code()).isZero();
             assertThat(Files.readString(out)).contains("data:image/");
+        }
+    }
+
+    @Nested
+    @DisplayName("Шапка из метаданных")
+    class FrontMatter {
+
+        @Test
+        @DisplayName("txt: название, автор и аннотация попадают в вывод")
+        void txtIncludesTitleAuthorAnnotation() throws Exception {
+            Result r = invoke(SAMPLE.toString(), "-o", "-");
+            assertThat(r.code()).isZero();
+            // Метаданные из <description> (sample.fb2): book-title, автор, аннотация.
+            assertThat(r.out()).contains(
+                    "Образцовый рассказ",   // book-title
+                    "Чехов",                // автор
+                    "аннотация");           // текст <annotation>
+        }
+
+        @Test
+        @DisplayName("html: обложка из <coverpage> рендерится как <img>")
+        void htmlIncludesCoverAndTitle(@TempDir Path dir) throws Exception {
+            Path out = dir.resolve("book.html");
+            Result r = invoke(SAMPLE.toString(), "-o", out.toString());
+
+            assertThat(r.code()).isZero();
+            String html = Files.readString(out);
+            // Заголовок книги виден в теле (а не только в <title>) и есть обложка.
+            assertThat(html).contains(
+                    "class=\"section-title\"",
+                    "<img src=\"data:image/png;base64,");
         }
     }
 }

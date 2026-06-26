@@ -1,10 +1,14 @@
 package org.tehlab.whitek0t.fictionbook.cli;
 
+import org.tehlab.whitek0t.fictionbook.api.BookInfo;
 import org.tehlab.whitek0t.fictionbook.api.FictionBookIO;
 import org.tehlab.whitek0t.fictionbook.dto.FictionBookDto;
 import org.tehlab.whitek0t.fictionbook.dto.Resource;
+import org.tehlab.whitek0t.fictionbook.dto.block.BlockElement;
 import org.tehlab.whitek0t.fictionbook.exception.FictionBookException;
 import org.tehlab.whitek0t.fictionbook.render.BookPlayer;
+import org.tehlab.whitek0t.fictionbook.render.FictionBookRenderer;
+import org.tehlab.whitek0t.fictionbook.render.ParagraphStyle;
 import org.tehlab.whitek0t.fictionbook.render.ResourceResolver;
 import org.tehlab.whitek0t.fictionbook.render.impl.HtmlRenderer;
 import org.tehlab.whitek0t.fictionbook.render.impl.PlainTextRenderer;
@@ -194,7 +198,9 @@ public final class FictionBookCli {
 
     private static String renderText(FictionBookDto book) {
         PlainTextRenderer renderer = new PlainTextRenderer();
-        new BookPlayer(renderer).play(book);
+        BookPlayer player = new BookPlayer(renderer, href -> resolve(book, href));
+        renderFrontMatter(renderer, player, book);
+        player.play(book);
         return renderer.getOutput();
     }
 
@@ -221,8 +227,54 @@ public final class FictionBookCli {
                 .build();
 
         // href картинок приходит как "#id"; resources хранятся по id без '#'.
-        new BookPlayer(renderer, href -> resolve(book, href)).play(book);
+        BookPlayer player = new BookPlayer(renderer, href -> resolve(book, href));
+        renderFrontMatter(renderer, player, book);
+        player.play(book);
         return renderer.getOutput();
+    }
+
+    /**
+     * Рендерит «шапку» книги из метаданных {@code <description>} перед телом:
+     * название, авторов, обложку и аннотацию. {@link BookPlayer} проигрывает только
+     * {@code <body>}, поэтому без этого название/аннотация/обложка (она лежит в
+     * {@code <coverpage>}) не попадают в вывод. Всё оборачивается в отдельную секцию,
+     * чтобы HTML-рендерер успел открыть документ до первого абзаца.
+     */
+    private static void renderFrontMatter(FictionBookRenderer renderer, BookPlayer player,
+                                          FictionBookDto book) {
+        BookInfo info = FictionBookIO.info(book);
+
+        boolean hasTitle = info.title() != null && !info.title().isBlank();
+        boolean hasAuthors = info.authorsLine() != null && !info.authorsLine().isBlank();
+        boolean hasCover = info.cover() != null;
+        boolean hasAnnotation = info.annotation() != null && !info.annotation().isEmpty();
+        if (!hasTitle && !hasAuthors && !hasCover && !hasAnnotation) {
+            return;
+        }
+
+        renderer.startSection(null);
+
+        if (hasTitle) {
+            renderer.startParagraph(ParagraphStyle.SECTION_TITLE);
+            renderer.text(info.title());
+            renderer.endParagraph();
+        }
+        if (hasAuthors) {
+            renderer.startParagraph(ParagraphStyle.TEXT_AUTHOR);
+            renderer.text(info.authorsLine());
+            renderer.endParagraph();
+        }
+        if (hasCover) {
+            // alt=null: в txt не дублируем название, в HTML картинка всё равно вставится.
+            renderer.image(info.cover(), null);
+        }
+        if (hasAnnotation) {
+            for (BlockElement block : info.annotation()) {
+                player.playBlock(block);
+            }
+        }
+
+        renderer.endSection();
     }
 
     private static Resource resolve(FictionBookDto book, String href) {
