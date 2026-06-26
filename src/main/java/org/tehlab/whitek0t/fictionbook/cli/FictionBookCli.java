@@ -11,6 +11,7 @@ import org.tehlab.whitek0t.fictionbook.render.FictionBookRenderer;
 import org.tehlab.whitek0t.fictionbook.render.ParagraphStyle;
 import org.tehlab.whitek0t.fictionbook.render.ResourceResolver;
 import org.tehlab.whitek0t.fictionbook.render.impl.HtmlRenderer;
+import org.tehlab.whitek0t.fictionbook.render.impl.MarkdownRenderer;
 import org.tehlab.whitek0t.fictionbook.render.impl.PlainTextRenderer;
 
 import java.io.PrintStream;
@@ -20,7 +21,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /**
- * Консольная утилита конвертации книг FB2/FB3 в {@code txt} и {@code html}.
+ * Консольная утилита конвертации книг FB2/FB3 в {@code txt}, {@code html} и {@code md}.
  *
  * <p>Это единственная точка входа-приложение в проекте-библиотеке: она лишь
  * связывает публичные фасады ({@link FictionBookIO}, {@link BookPlayer},
@@ -49,7 +50,7 @@ public final class FictionBookCli {
     }
 
     /** Формат вывода. */
-    private enum Target {TXT, HTML}
+    private enum Target {TXT, HTML, MD}
 
     /** Режим обработки картинок при выводе в HTML. */
     private enum ImageMode {EMBED, EXTRACT, NONE}
@@ -164,6 +165,7 @@ public final class FictionBookCli {
         String rendered = switch (format) {
             case TXT -> renderText(book);
             case HTML -> renderHtml(book, output, toStdout, imageMode, wrapDocument);
+            case MD -> renderMarkdown(book, output, toStdout, imageMode);
         };
 
         // --- Запись -----------------------------------------------------------
@@ -227,6 +229,29 @@ public final class FictionBookCli {
                 .build();
 
         // href картинок приходит как "#id"; resources хранятся по id без '#'.
+        BookPlayer player = new BookPlayer(renderer, href -> resolve(book, href));
+        renderFrontMatter(renderer, player, book);
+        player.play(book);
+        return renderer.getOutput();
+    }
+
+    private static String renderMarkdown(FictionBookDto book, Path output, boolean toStdout,
+                                         ImageMode imageMode) {
+        ResourceResolver resolver = switch (imageMode) {
+            case EMBED -> ResourceResolver.base64DataUri();
+            // null → картинка станет текстовым placeholder'ом в Markdown.
+            case NONE -> null;
+            case EXTRACT -> {
+                if (toStdout) {
+                    yield ResourceResolver.base64DataUri();
+                }
+                String base = stripExtension(output.getFileName().toString());
+                Path dir = parentOrCurrent(output).resolve(base + "_files");
+                yield ResourceResolver.saveToDirectory(dir, base + "_files/");
+            }
+        };
+
+        MarkdownRenderer renderer = new MarkdownRenderer(resolver);
         BookPlayer player = new BookPlayer(renderer, href -> resolve(book, href));
         renderFrontMatter(renderer, player, book);
         player.play(book);
@@ -308,8 +333,9 @@ public final class FictionBookCli {
         return switch (value.toLowerCase(Locale.ROOT)) {
             case "txt", "text" -> Target.TXT;
             case "html", "htm" -> Target.HTML;
+            case "md", "markdown" -> Target.MD;
             default -> {
-                err.println("Неизвестный формат: " + value + " (ожидается txt или html)");
+                err.println("Неизвестный формат: " + value + " (ожидается txt, html или md)");
                 yield null;
             }
         };
@@ -333,12 +359,19 @@ public final class FictionBookCli {
         if (name.endsWith(".html") || name.endsWith(".htm")) {
             return Target.HTML;
         }
+        if (name.endsWith(".md") || name.endsWith(".markdown")) {
+            return Target.MD;
+        }
         return Target.TXT;
     }
 
     private static Path deriveOutput(Path input, Target format) {
         String base = stripExtension(input.getFileName().toString());
-        String ext = format == Target.HTML ? ".html" : ".txt";
+        String ext = switch (format) {
+            case HTML -> ".html";
+            case MD -> ".md";
+            case TXT -> ".txt";
+        };
         Path parent = input.toAbsolutePath().getParent();
         Path target = Path.of(base + ext);
         return parent != null ? parent.resolve(target) : target;
@@ -356,26 +389,26 @@ public final class FictionBookCli {
 
     private static void printUsage(PrintStream out) {
         out.println("""
-                fictionbook — конвертация книг FB2/FB3 в txt и html
+                fictionbook — конвертация книг FB2/FB3 в txt, html и md
 
                 Использование:
                   fb <вход> [выход] [опции]
 
                 Опции:
-                  -f, --format <txt|html>   формат вывода (по умолчанию — по расширению
-                                            выхода, иначе txt)
-                  -o, --output <путь>       файл вывода ('-' — stdout). По умолчанию рядом
-                                            с входом с новым расширением
-                      --images <режим>      html: embed (base64, по умолчанию) |
-                                            extract (в папку <имя>_files) | none (без картинок)
-                      --no-wrap             html: только фрагмент, без <html>/<head>/<body>
-                  -h, --help                показать эту справку
-                  -v, --version             показать версию
+                  -f, --format <txt|html|md>  формат вывода (по умолчанию — по расширению
+                                              выхода, иначе txt)
+                  -o, --output <путь>         файл вывода ('-' — stdout). По умолчанию рядом
+                                              с входом с новым расширением
+                      --images <режим>        html/md: embed (base64, по умолчанию) |
+                                              extract (в папку <имя>_files) | none (без картинок)
+                      --no-wrap               html: только фрагмент, без <html>/<head>/<body>
+                  -h, --help                  показать эту справку
+                  -v, --version               показать версию
 
                 Примеры:
                   fb book.fb2
                   fb book.fb2 -f html
-                  fb book.fb2 -o out/book.html --images extract
+                  fb book.fb2 -f md -o out/book.md --images extract
                   fb book.fb2 -o -            # в stdout""");
     }
 }

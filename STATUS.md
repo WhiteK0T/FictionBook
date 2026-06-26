@@ -74,7 +74,7 @@
 org.tehlab.whitek0t.fictionbook/
 ├── api/                    # Публичные фасады (FictionBookIO, FictionBookFormat,
 │                           #   BookInfo, FictionBookStreamer)
-├── cli/                    # FictionBookCli — конвертер FB2/FB3 → txt/html (launcher fb)
+├── cli/                    # FictionBookCli — конвертер FB2/FB3 → txt/html/md (launcher fb)
 ├── dto/                    # Immutable Records (FictionBookDto, BodyDto, etc.)
 │   ├── description/        # Метаданные
 │   ├── block/              # Блочные элементы (Section, Paragraph, Poem, Table)
@@ -84,7 +84,7 @@ org.tehlab.whitek0t.fictionbook/
 │   ├── BookPlayer          # "Проигрыватель" книги
 │   ├── ParagraphStyle      # Enum стилей
 │   ├── ResourceResolver    # Абстракция для картинок
-│   └── impl/               # HtmlRenderer, PlainTextRenderer
+│   └── impl/               # HtmlRenderer, PlainTextRenderer, MarkdownRenderer
 ├── internal/               # Внутренняя реализация
 │   ├── parser/jackson/     # Jax-классы + DescriptionMapper
 │   ├── parser/stax/        # NodeBuilder'ы, Fb2BlockParser, Fb2BodyParser
@@ -272,6 +272,10 @@ org.tehlab.whitek0t.fictionbook/
 - [x] HtmlRenderer (полный HTML5 с CSS, builder API, экранирование, внешние
       ссылки в новой вкладке, режимы wrap-in-document / фрагмент)
 - [x] PlainTextRenderer (подсчёт слов, превью, статистика, опциональный alt картинок)
+- [x] MarkdownRenderer (GFM: заголовки по глубине секций, `**`/`*`/`~~`, blockquote
+      для цитат/эпиграфов, GFM-таблицы, `![alt](src)` через `ResourceResolver`,
+      `[текст](href)`, экранирование спецсимволов). Покрыто `MarkdownRendererTest`
+      (9 тестов: inline, заголовки, blockquote, таблицы, картинки)
 - [x] MimeTypeResolver (MIME → file extension; лежит в `util/`, не в `render/`)
 - [x] Fb2GenreResolver (`util/`) — коды жанров FB2 → человекочитаемые названия
       (`humanize`), неизвестный код возвращается как есть. Покрыто
@@ -280,16 +284,17 @@ org.tehlab.whitek0t.fictionbook/
       ParagraphStyle, оба рендерера, все режимы `ResourceResolver`)
 
 ### CLI-утилита
-- [x] `cli/FictionBookCli` — консольная конвертация FB2/FB3 → `txt`/`html`.
+- [x] `cli/FictionBookCli` — консольная конвертация FB2/FB3 → `txt`/`html`/`md`.
       Единственная точка входа-приложение в проекте-библиотеке: связывает публичные
       фасады (`FictionBookIO`, `BookInfo`, `BookPlayer`, рендереры), своего парсера/
       рендерера не вводит (только оркестрирует вызовы существующих).
-- [x] Аргументы: позиционные `<вход> [выход]`, `-f/--format txt|html`,
+- [x] Аргументы: позиционные `<вход> [выход]`, `-f/--format txt|html|md`,
       `-o/--output` (`-` → stdout), `--images embed|extract|none`, `--no-wrap`
       (HTML-фрагмент), `-h/--help`, `-v/--version`. Формат выводится из расширения
-      выхода, иначе `txt`; выход по умолчанию — рядом с входом с новым расширением.
-- [x] Картинки в HTML: `embed` (base64), `extract` (в папку `<имя>_files`),
-      `none` (placeholder). При выводе в stdout `extract` деградирует до `embed`.
+      выхода (`.html`/`.md`), иначе `txt`; выход по умолчанию — рядом с входом с новым расширением.
+- [x] Картинки в HTML/MD: `embed` (base64), `extract` (в папку `<имя>_files`),
+      `none` (placeholder; в MD — текстовый `*(изображение: …)*`). При выводе в stdout
+      `extract` деградирует до `embed`.
 - [x] Шапка из метаданных перед телом (`renderFrontMatter` через `BookInfo`):
       название, авторы, обложка (она лежит в `<coverpage>`) и аннотация — иначе
       `BookPlayer` (он играет только `<body>`) их не выводит. Обёрнута в секцию,
@@ -298,10 +303,11 @@ org.tehlab.whitek0t.fictionbook/
       `applicationName = "fb"`): запуск `./gradlew run --args="…"`, дистрибутив
       `./gradlew installDist` → `build/install/fb/bin/fb`. Новых зависимостей нет
       (ручной разбор аргументов).
-- [x] Покрыто `FictionBookCliTest` (12 тестов: разбор аргументов и коды возврата,
+- [x] Покрыто `FictionBookCliTest` (16 тестов: разбор аргументов и коды возврата,
       txt в stdout/файл, html из расширения, `--no-wrap`, режимы картинок
-      embed/extract, шапка из метаданных). Картинки конвертируются и инлайновые (`<p><image/></p>`), и
-      блочные (`<image>` прямым ребёнком секции — см. `BlockImage`).
+      embed/extract, md в stdout/файл + embed/none, шапка из метаданных). Картинки
+      конвертируются и инлайновые (`<p><image/></p>`), и блочные (`<image>` прямым
+      ребёнком секции — см. `BlockImage`).
 
 ### Тестирование
 - [x] Round-trip фикспоинт-тесты (`Fb2RoundTripTest`: write→read→write байт-в-байт +
@@ -377,7 +383,6 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] JavaFxRenderer — для настольных читалок
 - [ ] PdfRenderer — через iText или Apache PDFBox
 - [ ] EpubRenderer — генерация EPUB из FB2
-- [ ] MarkdownRenderer — конвертация в Markdown
 
 ### Улучшения
 - [ ] Mutable Model — для удобного редактирования (вместо пересоздания immutable DTO)

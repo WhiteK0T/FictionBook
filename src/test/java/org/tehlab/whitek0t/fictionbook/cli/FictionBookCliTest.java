@@ -229,4 +229,54 @@ class FictionBookCliTest {
                     "<img src=\"data:image/png;base64,");
         }
     }
+
+    @Nested
+    @DisplayName("Конвертация в md")
+    class ToMarkdown {
+
+        @Test
+        @DisplayName("в stdout: заголовки, ссылка и шапка")
+        void stdout() throws Exception {
+            Result r = invoke(SAMPLE.toString(), "-f", "md", "-o", "-");
+            assertThat(r.code()).isZero();
+            assertThat(r.out()).contains(
+                    "# Образцовый рассказ",          // шапка: book-title как H1
+                    "# Глава первая",                // заголовок секции
+                    "[на вторую главу](#ch2)");      // ссылка в Markdown
+        }
+
+        @Test
+        @DisplayName("формат выводится из расширения .md")
+        void inferredFromExtension(@TempDir Path dir) throws Exception {
+            Path out = dir.resolve("book.md");
+            Result r = invoke(SAMPLE.toString(), "-o", out.toString());
+
+            assertThat(r.code()).isZero();
+            assertThat(Files.readString(out)).contains("# Глава первая");
+        }
+
+        @Test
+        @DisplayName("--images embed встраивает картинку как ![](data:...)")
+        void embedImages(@TempDir Path dir) throws Exception {
+            Path out = dir.resolve("book.md");
+            Result r = invoke(SAMPLE.toString(), "-f", "md",
+                    "-o", out.toString(), "--images", "embed");
+
+            assertThat(r.code()).isZero();
+            assertThat(Files.readString(out)).contains("![](data:image/png;base64,");
+        }
+
+        @Test
+        @DisplayName("--images none даёт текстовый placeholder вместо картинки")
+        void noneImages(@TempDir Path dir) throws Exception {
+            Path out = dir.resolve("book.md");
+            Result r = invoke(SAMPLE.toString(), "-f", "md",
+                    "-o", out.toString(), "--images", "none");
+
+            assertThat(r.code()).isZero();
+            String md = Files.readString(out);
+            assertThat(md).contains("*(изображение");
+            assertThat(md).doesNotContain("data:image");
+        }
+    }
 }
