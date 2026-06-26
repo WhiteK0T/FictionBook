@@ -8,6 +8,7 @@ import org.tehlab.whitek0t.fictionbook.dto.inline.*;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 
 class NodeBuildersTest {
 
@@ -112,10 +113,10 @@ class NodeBuildersTest {
         TableCell result = (TableCell) builder.build();
 
         assertThat(result.content()).hasSize(1);
-        assertThat(result.content().get(0))
+        assertThat(result.content().getFirst())
                 .isInstanceOf(Paragraph.class)
                 .extracting(p -> ((Paragraph) p).elements())
-                .asList()
+                .asInstanceOf(LIST)
                 .containsExactly(new Text("Dirty text"));
     }
 
@@ -130,7 +131,7 @@ class NodeBuildersTest {
         TableCell result = (TableCell) builder.build();
 
         assertThat(result.content()).hasSize(1);
-        assertThat(result.content().get(0)).isInstanceOf(Paragraph.class);
+        assertThat(result.content().getFirst()).isInstanceOf(Paragraph.class);
     }
 
     @Test
