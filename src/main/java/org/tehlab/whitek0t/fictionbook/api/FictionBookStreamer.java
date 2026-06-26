@@ -5,6 +5,7 @@ import org.tehlab.whitek0t.fictionbook.dto.block.Section;
 import org.tehlab.whitek0t.fictionbook.dto.description.Description;
 import org.tehlab.whitek0t.fictionbook.exception.FictionBookException;
 import org.tehlab.whitek0t.fictionbook.internal.anchor.AnchorIndex;
+import org.tehlab.whitek0t.fictionbook.internal.reader.fb2.Fb2Streamer;
 
 import java.nio.file.Path;
 
@@ -27,43 +28,19 @@ public interface FictionBookStreamer extends AutoCloseable {
     /**
      * Открывает книгу для потокового чтения; формат определяется автоматически.
      *
-     * <p><b>Внимание:</b> реализация пока заглушка — методы стримера возвращают
-     * {@code null} (см. STATUS.md, раздел про Streaming API).</p>
+     * <p>FB2 читается лениво посекционно ({@code Fb2Streamer}); бинарники грузятся
+     * целиком по требованию {@link #getResource}. FB3 пока не поддержан.</p>
      *
      * @param file путь к файлу книги
      * @return стример для последовательного чтения
-     * @throws FictionBookException при ошибке определения формата или открытия файла
+     * @throws FictionBookException          при ошибке определения формата или открытия файла
+     * @throws UnsupportedOperationException для формата FB3
      */
     static FictionBookStreamer open(Path file) throws FictionBookException {
         FictionBookFormat format = FictionBookFormat.detect(file);
         return switch (format) {
-            case FB2 -> new FictionBookStreamer() {
-                @Override
-                public Description readDescription() throws FictionBookException {
-                    return null;
-                }
-
-                @Override
-                public Section readNextSection() throws FictionBookException {
-                    return null;
-                }
-
-                @Override
-                public Resource getResource(String id) throws FictionBookException {
-                    return null;
-                }
-
-                @Override
-                public AnchorIndex buildAnchorIndex() throws FictionBookException {
-                    return null;
-                }
-
-                @Override
-                public void close() throws Exception {
-
-                }
-            };
-            case FB3 -> throw new UnsupportedOperationException("FB3 writer not implemented yet");
+            case FB2 -> new Fb2Streamer(file);
+            case FB3 -> throw new UnsupportedOperationException("FB3 streaming not implemented yet");
         };
     }
 

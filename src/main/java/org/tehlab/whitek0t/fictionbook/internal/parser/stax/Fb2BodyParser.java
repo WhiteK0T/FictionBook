@@ -64,9 +64,15 @@ public class Fb2BodyParser {
     }
 
     /**
-     * Парсит {@code <section>} рекурсивно (с вложенными секциями).
+     * Парсит {@code <section>} рекурсивно (с вложенными секциями); ридер должен
+     * стоять на открывающем теге {@code <section>}. Публичный, чтобы потоковый
+     * {@code Fb2Streamer} мог читать секции по одной.
+     *
+     * @param xml      StAX-ридер на {@code <section>}
+     * @param fileName имя файла (для сообщений об ошибках)
+     * @return готовая секция со всем содержимым и вложенными секциями
      */
-    private Section parseSection(XMLStreamReader xml, String fileName)
+    public Section parseSection(XMLStreamReader xml, String fileName)
             throws XMLStreamException, FictionBookException {
 
         String id = xml.getAttributeValue(null, "id");
@@ -81,9 +87,7 @@ public class Fb2BodyParser {
                 case XMLStreamConstants.START_ELEMENT -> {
                     String tag = xml.getLocalName();
                     switch (tag) {
-                        case "title" -> {
-                            title.addAll(blockParser.parseBlockContainer(xml, "title", fileName));
-                        }
+                        case "title" -> title.addAll(blockParser.parseBlockContainer(xml, "title", fileName));
                         case "section" -> subSections.add(parseSection(xml, fileName));
                         // ✅ Используем parseBlock для всех блочных элементов
                         case "p", "empty-line", "poem", "table", "subtitle", "cite", "epigraph" -> {

@@ -86,7 +86,8 @@ org.tehlab.whitek0t.fictionbook/
 ├── internal/               # Внутренняя реализация
 │   ├── parser/jackson/     # Jax-классы + DescriptionMapper
 │   ├── parser/stax/        # NodeBuilder'ы, Fb2BlockParser, Fb2BodyParser
-│   ├── reader/fb2/         # Fb2Reader (eager base64)
+│   ├── reader/fb2/         # Fb2Reader (eager base64), Fb2Streamer (ленивые секции),
+│   │                       #   Fb2DescriptionReader, Fb2BinaryReader
 │   ├── reader/fb3/         # Fb3Reader (OPC/ZIP: Fb3Package, OpcRelationships, …)
 │   ├── writer/fb2/         # Fb2Writer (streaming base64)
 │   ├── writer/fb3/         # Fb3Writer (OPC/ZIP контейнер)
@@ -151,6 +152,20 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Eager-загрузка бинарников (base64 decode)
 - [x] Покрыто `Fb2ReaderTest` (27 тестов: `@Nested` Basic / Description / Body,
       несколько `<body>` main+notes), `AuthorTest`, `NodeBuildersTest`
+
+### Streaming API (FB2)
+- [x] `FictionBookStreamer.open(Path)` → `Fb2Streamer` (FB2; FB3 пока бросает
+      `UnsupportedOperationException`). Гарантия — **ленивые секции, eager-бинарники**:
+      `readNextSection()` отдаёт по одной секции верхнего уровня, не удерживая
+      предыдущие в памяти; `readDescription()` парсит метаданные лениво и кэширует.
+- [x] `getResource(id)` грузит все `<binary>` целиком по первому обращению (они в
+      конце FB2-файла), резолвит по `id` и по `#id`. `buildAnchorIndex()` читает
+      книгу целиком (индекс якорей по природе охватывает весь файл — не потоковая операция).
+- [x] Переиспользование разбора: из `Fb2Reader` выделены `Fb2DescriptionReader` и
+      `Fb2BinaryReader`, `Fb2BodyParser.parseSection` стал публичным.
+- [x] Покрыто `Fb2StreamerTest` (9 тестов: description, поток секций, ресурсы, якоря).
+- [ ] Ограничения v1: секции из `<body name="notes">` идут вперемешку с основными
+      (Section не несёт имени тела); FB3-стриминг не реализован.
 
 ### FB3 чтение
 - [x] Fb3Reader (`internal/reader/fb3/`) — чтение FB3 (OPC/ZIP-контейнер) в тот же
@@ -316,11 +331,9 @@ org.tehlab.whitek0t.fictionbook/
 ## ⏳ В планах (не начато)
 
 ### Streaming API
-- [ ] FictionBookStreamer — интерфейс в `api/` уже есть, но `open()` возвращает
-      заглушку: все методы (`readDescription`, `readNextSection`, `getResource`,
-      `buildAnchorIndex`) отдают `null`. Реальная реализация — TODO.
 - [ ] AnchorIndex с byte offset для seek в Streaming режиме
 - [ ] Lazy-загрузка бинарников через RandomAccessFile (опционально)
+- [ ] Стриминг FB3 (`open()` пока бросает `UnsupportedOperationException` на FB3)
 
 ### Дополнительные рендереры
 - [ ] JavaFxRenderer — для настольных читалок
@@ -464,17 +477,15 @@ FictionBookDto clean = custom.sanitize(book);
 # Следующие шаги (приоритеты)
 
 ## Высокий приоритет
-1. **FictionBookStreamer** — Streaming API для читалок
-
-## Средний приоритет
-2. **Mutable Model** — для удобного редактирования
-3. **JavaFxRenderer** — для настольных читалок
+1. **Mutable Model** — для удобного редактирования
+2. **JavaFxRenderer** — для настольных читалок
 
 ## Низкий приоритет
-4. **PDF/EPUB рендереры**
-5. **CLI-утилита**
-6. **CSS в FB3**
-7. **Интеграция с Elasticsearch** — через PlainTextRenderer
+3. **PDF/EPUB рендереры**
+4. **CLI-утилита**
+5. **CSS в FB3**
+6. **Интеграция с Elasticsearch** — через PlainTextRenderer
+7. **Стриминг FB3** + byte-offset seek для `Fb2Streamer`
 
 ---
 
