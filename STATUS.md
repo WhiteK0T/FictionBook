@@ -306,9 +306,14 @@ org.tehlab.whitek0t.fictionbook/
       не падает. Образцы: `fb2/sample.fb2`, `fb3/sample.fb3` (см. `books/README.md`)
 - [x] Property-based round-trip (`Fb2RoundTripPropertyTest`, jqwik): фикспоинт на
       случайных DTO-деревьях; вскрыл баги порядка `<binary>` и склейки вложенного текста
-- [x] Fuzz-тесты прощающего чтения (`Fb2ReaderFuzzTest`, jqwik): на случайных байтах и
-      покалеченном FB2 ридер обязан вернуть непустой DTO либо бросить `FictionBookException`
-      — никаких `NPE`/`XMLStreamException`/`StackOverflowError` наружу
+- [x] Fuzz-тесты прощающего чтения: на случайных байтах и покалеченном FB2 ридер
+      обязан вернуть непустой DTO либо бросить `FictionBookException` — никаких
+      `NPE`/`XMLStreamException`/`StackOverflowError` наружу. Рандомизированный
+      property-фьюз (`Fb2ReaderFuzzPropertyTest`, jqwik, 2×500 прогонов) намеренно
+      вынесен в **отдельный чисто-jqwik класс**: в одном классе с JUnit-Jupiter
+      (`@Nested`/`@Test`) движок jqwik не исполняет свои `@Property` — они молча
+      докладываются как skipped. Детерминированные краевые случаи на `@Test` остались
+      в `Fb2ReaderFuzzTest`
 - [x] JMH-бенчмарки (`Fb2Benchmark` в `src/jmh/java`, плагин `me.champeau.jmh`):
       read / write / sanitize / round-trip на книгах 10 и 100 секций; запуск `./gradlew jmh`
 - [x] Юнит-тесты по компонентам (см. пометки «Покрыто …» в разделах выше)

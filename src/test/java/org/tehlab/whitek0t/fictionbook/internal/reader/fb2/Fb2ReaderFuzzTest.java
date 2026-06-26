@@ -1,11 +1,5 @@
 package org.tehlab.whitek0t.fictionbook.internal.reader.fb2;
 
-import net.jqwik.api.Arbitraries;
-import net.jqwik.api.Arbitrary;
-import net.jqwik.api.Combinators;
-import net.jqwik.api.ForAll;
-import net.jqwik.api.Property;
-import net.jqwik.api.Provide;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,18 +13,18 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Fuzz-тесты «прощающего чтения»: на любом входе — случайных байтах, обрезанном или
- * покалеченном FB2 — {@link Fb2Reader} обязан соблюдать единый контракт устойчивости:
- * <b>либо вернуть непустой {@link FictionBookDto}, либо бросить {@link FictionBookException}</b>
- * (его подкласс {@code InvalidFormatException} допустим). Любое иное исключение или ошибка
- * ({@code NullPointerException}, голый {@code XMLStreamException}, {@code StackOverflowError},
- * {@code IllegalArgumentException} из base64 и т.п.), просочившееся наружу, — это баг
- * устойчивости: forgiving-ридер не должен падать «неожиданно» на враждебном вводе.
+ * Детерминированные fuzz-случаи «прощающего чтения» на JUnit Jupiter ({@code @Test}):
+ * именованные «грязные» входы как документация поведения. {@link Fb2Reader} обязан
+ * соблюдать единый контракт устойчивости: <b>либо вернуть непустой {@link FictionBookDto},
+ * либо бросить {@link FictionBookException}</b> (его подкласс {@code InvalidFormatException}
+ * допустим). Любое иное исключение или ошибка ({@code NullPointerException}, голый
+ * {@code XMLStreamException}, {@code StackOverflowError}, {@code IllegalArgumentException}
+ * из base64 и т.п.), просочившееся наружу, — это баг устойчивости.
  *
- * <p>Фьюзим через {@link Fb2Reader#read(java.io.InputStream)} — этот путь отдаёт байты
- * прямо в StAX (UTF-8), без эвристик кодировки, поэтому контракт проверяется детерминированно.
- * Несколько «грязных» случаев на пути {@code read(Path)} и вовсе невалидного XML вынесены
- * в именованные {@code @Test} как документация поведения.</p>
+ * <p>Рандомизированный property-фьюз ({@code @Property}) вынесен в отдельный чисто
+ * jqwik-овский класс {@link Fb2ReaderFuzzPropertyTest}: в одном классе мешать
+ * {@code @Property} и Jupiter-конструкции нельзя — иначе jqwik перестаёт исполнять
+ * свои проперти (они докладываются как skipped).</p>
  */
 class Fb2ReaderFuzzTest {
 
@@ -60,22 +54,6 @@ class Fb2ReaderFuzzTest {
                 <binary id="img" content-type="image/png">iVBORw0KGgo=</binary>
             </FictionBook>
             """).getBytes(StandardCharsets.UTF_8);
-
-    // ========================================================================
-    // PROPERTY-ФЬЮЗ
-    // ========================================================================
-
-    @Property(tries = 500)
-    @DisplayName("any random byte string is read forgivingly or rejected cleanly")
-    void randomBytesNeverThrowUncontrolled(@ForAll("randomBytes") byte[] data) {
-        assertForgiving(data);
-    }
-
-    @Property(tries = 500)
-    @DisplayName("any corruption of a valid FB2 is read forgivingly or rejected cleanly")
-    void corruptedValidFb2NeverThrowUncontrolled(@ForAll("corruptedFb2") byte[] data) {
-        assertForgiving(data);
-    }
 
     // ========================================================================
     // ДЕТЕРМИНИРОВАННЫЕ КРАЕВЫЕ СЛУЧАИ
@@ -147,9 +125,9 @@ class Fb2ReaderFuzzTest {
                             <document-info><id>i</id><version>1.0</version></document-info>
                         </description>
                         <body>""");
-            for (int i = 0; i < depth; i++) sb.append("<section>");
+            sb.repeat("<section>", depth);
             sb.append("<p>дно</p>");
-            for (int i = 0; i < depth; i++) sb.append("</section>");
+            sb.repeat("</section>", depth);
             sb.append("</body></FictionBook>");
 
             FictionBookDto book = readOrFail(sb.toString().getBytes(StandardCharsets.UTF_8));
@@ -168,9 +146,9 @@ class Fb2ReaderFuzzTest {
                             <document-info><id>i</id><version>1.0</version></document-info>
                         </description>
                         <body>""");
-            for (int i = 0; i < depth; i++) sb.append("<section>");
+            sb.repeat("<section>", depth);
             sb.append("<p>дно</p>");
-            for (int i = 0; i < depth; i++) sb.append("</section>");
+            sb.repeat("</section>", depth);
             sb.append("</body></FictionBook>");
 
             // Не важно, прочитается или отвергнется — важно, что это не StackOverflowError
@@ -227,57 +205,5 @@ class Fb2ReaderFuzzTest {
         String s = new String(data, StandardCharsets.UTF_8);
         if (s.length() > 120) s = s.substring(0, 120) + "…(" + data.length + " bytes)";
         return "[" + s.replace('\n', ' ') + "]";
-    }
-
-    // ========================================================================
-    // ГЕНЕРАТОРЫ
-    // ========================================================================
-
-    @Provide
-    Arbitrary<byte[]> randomBytes() {
-        return Arbitraries.bytes().array(byte[].class).ofMinSize(0).ofMaxSize(512);
-    }
-
-    /**
-     * Берёт эталонный FB2 и применяет одну из мутаций: обрезку, замену байта,
-     * вырезание куска или вставку мусора. Так покрываем «почти валидный» вход,
-     * до которого случайные байты не доберутся.
-     */
-    @Provide
-    Arbitrary<byte[]> corruptedFb2() {
-        Arbitrary<Integer> op = Arbitraries.integers().between(0, 3);
-        Arbitrary<Integer> idx = Arbitraries.integers().between(0, VALID_FB2.length);
-        Arbitrary<Integer> len = Arbitraries.integers().between(1, 48);
-        Arbitrary<Byte> fill = Arbitraries.bytes();
-        return Combinators.combine(op, idx, len, fill).as(Fb2ReaderFuzzTest::mutate);
-    }
-
-    private static byte[] mutate(int op, int idx, int len, byte fill) {
-        byte[] src = VALID_FB2;
-        switch (op) {
-            case 0: // обрезка до случайной длины
-                return Arrays.copyOf(src, Math.min(idx, src.length));
-            case 1: { // замена одного байта
-                byte[] c = src.clone();
-                c[idx % c.length] = fill;
-                return c;
-            }
-            case 2: { // вырезание куска
-                int start = Math.min(idx, src.length);
-                int end = Math.min(start + len, src.length);
-                byte[] c = new byte[src.length - (end - start)];
-                System.arraycopy(src, 0, c, 0, start);
-                System.arraycopy(src, end, c, start, src.length - end);
-                return c;
-            }
-            default: { // вставка прогона мусорных байтов
-                int pos = Math.min(idx, src.length);
-                byte[] c = new byte[src.length + len];
-                System.arraycopy(src, 0, c, 0, pos);
-                Arrays.fill(c, pos, pos + len, fill);
-                System.arraycopy(src, pos, c, pos + len, src.length - pos);
-                return c;
-            }
-        }
     }
 }
