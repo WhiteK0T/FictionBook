@@ -90,7 +90,8 @@ org.tehlab.whitek0t.fictionbook/
 │   ├── parser/stax/        # NodeBuilder'ы, Fb2BlockParser, Fb2BodyParser
 │   ├── reader/fb2/         # Fb2Reader (eager base64), Fb2Streamer (ленивые секции),
 │   │                       #   Fb2DescriptionReader, Fb2BinaryReader
-│   ├── reader/fb3/         # Fb3Reader (OPC/ZIP: Fb3Package, OpcRelationships, …)
+│   ├── reader/fb3/         # Fb3Reader, Fb3Streamer (ленивые секции), Fb3Layout
+│   │                       #   (OPC-навигация + картинки), Fb3Package, OpcRelationships
 │   ├── writer/fb2/         # Fb2Writer (streaming base64)
 │   ├── writer/fb3/         # Fb3Writer (OPC/ZIP контейнер)
 │   ├── info/               # BookInfoExtractor (сводка BookInfo)
@@ -155,19 +156,27 @@ org.tehlab.whitek0t.fictionbook/
 - [x] Покрыто `Fb2ReaderTest` (27 тестов: `@Nested` Basic / Description / Body,
       несколько `<body>` main+notes), `AuthorTest`, `NodeBuildersTest`
 
-### Streaming API (FB2)
-- [x] `FictionBookStreamer.open(Path)` → `Fb2Streamer` (FB2; FB3 пока бросает
-      `UnsupportedOperationException`). Гарантия — **ленивые секции, eager-бинарники**:
-      `readNextSection()` отдаёт по одной секции верхнего уровня, не удерживая
-      предыдущие в памяти; `readDescription()` парсит метаданные лениво и кэширует.
-- [x] `getResource(id)` грузит все `<binary>` целиком по первому обращению (они в
-      конце FB2-файла), резолвит по `id` и по `#id`. `buildAnchorIndex()` читает
-      книгу целиком (индекс якорей по природе охватывает весь файл — не потоковая операция).
-- [x] Переиспользование разбора: из `Fb2Reader` выделены `Fb2DescriptionReader` и
+### Streaming API (FB2 + FB3)
+- [x] `FictionBookStreamer.open(Path)` автоопределяет формат → `Fb2Streamer` (FB2)
+      или `Fb3Streamer` (FB3). Общая гарантия — **ленивые секции**: `readNextSection()`
+      отдаёт по одной секции верхнего уровня, не удерживая предыдущие в памяти;
+      `readDescription()` парсит метаданные лениво и кэширует.
+- [x] **FB2** — eager-бинарники: `getResource(id)` грузит все `<binary>` целиком по
+      первому обращению (они в конце FB2-файла), резолвит по `id` и по `#id`.
+      Переиспользование разбора: из `Fb2Reader` выделены `Fb2DescriptionReader` и
       `Fb2BinaryReader`, `Fb2BodyParser.parseSection` стал публичным.
-- [x] Покрыто `Fb2StreamerTest` (9 тестов: description, поток секций, ресурсы, якоря).
-- [ ] Ограничения v1: секции из `<body name="notes">` идут вперемешку с основными
-      (Section не несёт имени тела); FB3-стриминг не реализован.
+- [x] **FB3** — eager-контейнер: OPC/ZIP с дефлейтом не допускает seek, поэтому архив
+      распаковывается в память целиком (`Fb3Package`), как и в `Fb3Reader`. Выигрыш
+      стримера — не строить разом полное дерево секций. Секции `body.xml` отдаются
+      лениво курсором `Fb3BodyParser.SectionCursor`, ссылки `<img>` переписываются на
+      якоря `#id` посекционно. OPC-навигация и сбор картинок вынесены в общий
+      `Fb3Layout` (используется и `Fb3Reader`, и `Fb3Streamer`).
+- [x] `buildAnchorIndex()` (оба формата) читает книгу целиком — индекс якорей по
+      природе охватывает весь файл, это не потоковая операция.
+- [x] Покрыто `Fb2StreamerTest` (9 тестов) и `Fb3StreamerTest` (10 тестов: description,
+      поток секций основного тела + сносок, картинки/ресурсы, переписывание `<img>`, якоря).
+- [ ] Ограничения v1: секции из тела сносок (`<body name="notes">` / FB3 `notes.xml`)
+      идут после основных в одном потоке (Section не несёт имени тела).
 
 ### FB3 чтение
 - [x] Fb3Reader (`internal/reader/fb3/`) — чтение FB3 (OPC/ZIP-контейнер) в тот же
@@ -176,6 +185,9 @@ org.tehlab.whitek0t.fictionbook/
       частям, разбор `[Content_Types].xml` (Default/Override → MIME-типы).
 - [x] OpcRelationships — навигация по `_rels/*.rels` (книга → `description.xml` →
       `body.xml` + картинки), разрешение `Target` относительно каталога части.
+- [x] Fb3Layout — общая раскладка контейнера (резолв частей описания/тела/сносок/обложки
+      + ленивый сбор картинок и карта переписывания `<img>`); один источник правды для
+      `Fb3Reader` и `Fb3Streamer`.
 - [x] Fb3DescriptionParser — StAX-разбор `description.xml`: `<title>/<main>`, авторы
       из `<fb3-relations>/<subject link="author">` (с фолбэком на разбор ФИО из
       `<title>/<main>`), жанры `<fb3-classification>`, `<lang>`, `<sequence>`,
@@ -349,12 +361,12 @@ org.tehlab.whitek0t.fictionbook/
   чисты везде, включая `internal/`.
 - **0 предупреждений во всех публично-видимых пакетах** (`dto/`, `api/`, `render/`,
   `render/impl/`, `util/`, `exception/`, `encoding/`).
-- Осталось **123 предупреждения, все категории «missing» и все в `internal/*`** —
+- Осталось **129 предупреждений, все категории «missing» и все в `internal/*`** —
   деталь реализации, документировать намеренно не стали; гасятся рабочим
   `-Xdoclint:all,-missing`, поэтому `./gradlew build` зелёный. Разбивка:
-  `internal/parser/jackson` (59), `internal/sanitizer` (18), `internal/parser/stax` (18),
-  `internal/anchor` (13), `internal/reader/fb2` (7), `internal/writer/fb2` (6),
-  `internal/io` (2).
+  `internal/parser/jackson` (59), `internal/parser/stax` (20), `internal/sanitizer` (18),
+  `internal/anchor` (13), `internal/reader/fb2` (9), `internal/writer/fb2` (6),
+  `internal/io` (2), `internal/writer/fb3` (1), `internal/reader/fb3` (1).
 - Примечание: по умолчанию `javac` обрезает вывод предупреждений на 100 (`-Xmaxwarns`);
   истинные числа выше получены с поднятым лимитом, иначе ранний «беглый» прогон вводил
   в заблуждение (казалось, что `api/`/`render/` чисты).
@@ -377,7 +389,7 @@ org.tehlab.whitek0t.fictionbook/
 ### Streaming API
 - [ ] AnchorIndex с byte offset для seek в Streaming режиме
 - [ ] Lazy-загрузка бинарников через RandomAccessFile (опционально)
-- [ ] Стриминг FB3 (`open()` пока бросает `UnsupportedOperationException` на FB3)
+- [ ] Ленивая распаковка частей FB3-контейнера (сейчас весь архив — в память)
 
 ### Дополнительные рендереры
 - [ ] JavaFxRenderer — для настольных читалок
@@ -528,7 +540,7 @@ FictionBookDto clean = custom.sanitize(book);
 3. **PDF/EPUB рендереры**
 4. **CSS в FB3**
 5. **Интеграция с Elasticsearch** — через PlainTextRenderer
-6. **Стриминг FB3** + byte-offset seek для `Fb2Streamer`
+6. **Byte-offset seek** для стримеров (FB2/FB3) и ленивая распаковка частей FB3
 7. **CLI** (сделан базовый конвертер): запись в FB3 (fb2↔fb3) и пакетный режим
 
 ---

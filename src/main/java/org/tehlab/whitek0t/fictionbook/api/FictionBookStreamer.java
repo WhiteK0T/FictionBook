@@ -6,6 +6,7 @@ import org.tehlab.whitek0t.fictionbook.dto.description.Description;
 import org.tehlab.whitek0t.fictionbook.exception.FictionBookException;
 import org.tehlab.whitek0t.fictionbook.internal.anchor.AnchorIndex;
 import org.tehlab.whitek0t.fictionbook.internal.reader.fb2.Fb2Streamer;
+import org.tehlab.whitek0t.fictionbook.internal.reader.fb3.Fb3Streamer;
 
 import java.nio.file.Path;
 
@@ -29,18 +30,18 @@ public interface FictionBookStreamer extends AutoCloseable {
      * Открывает книгу для потокового чтения; формат определяется автоматически.
      *
      * <p>FB2 читается лениво посекционно ({@code Fb2Streamer}); бинарники грузятся
-     * целиком по требованию {@link #getResource}. FB3 пока не поддержан.</p>
+     * целиком по требованию {@link #getResource}. FB3 ({@code Fb3Streamer}) также отдаёт
+     * секции лениво, но OPC/ZIP-контейнер по природе распаковывается в память целиком.</p>
      *
      * @param file путь к файлу книги
      * @return стример для последовательного чтения
-     * @throws FictionBookException          при ошибке определения формата или открытия файла
-     * @throws UnsupportedOperationException для формата FB3
+     * @throws FictionBookException при ошибке определения формата или открытия файла
      */
     static FictionBookStreamer open(Path file) throws FictionBookException {
         FictionBookFormat format = FictionBookFormat.detect(file);
         return switch (format) {
             case FB2 -> new Fb2Streamer(file);
-            case FB3 -> throw new UnsupportedOperationException("FB3 streaming not implemented yet");
+            case FB3 -> new Fb3Streamer(file);
         };
     }
 

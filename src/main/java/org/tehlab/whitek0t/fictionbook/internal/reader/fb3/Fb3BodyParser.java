@@ -91,6 +91,83 @@ final class Fb3BodyParser {
         }
     }
 
+    /**
+     * Открывает потоковый курсор по секциям {@code body.xml} (для {@code Fb3Streamer}):
+     * секции верхнего уровня выдаются по одной, без удержания всего дерева тела в памяти.
+     *
+     * @param xml      байты части тела ({@code body.xml} или {@code notes.xml})
+     * @param fileName имя исходного файла (для сообщений об ошибках)
+     * @return курсор секций
+     * @throws FictionBookException при ошибке инициализации StAX-ридера
+     */
+    SectionCursor cursor(byte[] xml, String fileName) throws FictionBookException {
+        try {
+            XMLStreamReader r = factory.createXMLStreamReader(new ByteArrayInputStream(xml));
+            return new SectionCursor(r, fileName);
+        } catch (XMLStreamException e) {
+            throw new FictionBookException("XML parsing error in FB3 body of " + fileName, e);
+        }
+    }
+
+    /**
+     * Ленивый курсор по секциям верхнего уровня одной части тела. Спускается до корня
+     * ({@code <fb3-body>}/{@code <body>}), затем на каждый {@link #next()} отдаёт
+     * следующую {@code <section>}; элементы уровня тела ({@code <title>} и т.п.)
+     * пропускаются. По исчерпании части — {@code null}.
+     */
+    final class SectionCursor implements AutoCloseable {
+
+        private final XMLStreamReader r;
+        private final String fileName;
+        private boolean inBody = false;
+        private boolean done = false;
+
+        private SectionCursor(XMLStreamReader r, String fileName) {
+            this.r = r;
+            this.fileName = fileName;
+        }
+
+        /**
+         * @return следующая секция верхнего уровня или {@code null} в конце части
+         * @throws FictionBookException при ошибке разбора XML
+         */
+        Section next() throws FictionBookException {
+            if (done) {
+                return null;
+            }
+            try {
+                while (r.hasNext()) {
+                    int event = r.next();
+                    if (event == XMLStreamConstants.START_ELEMENT) {
+                        String tag = r.getLocalName();
+                        if (!inBody) {
+                            if ("fb3-body".equals(tag) || "body".equals(tag)) {
+                                inBody = true;
+                            }
+                        } else if ("section".equals(tag)) {
+                            return parseSection(r, fileName);
+                        } else {
+                            blockParser.skipUnknownElement(r);
+                        }
+                    } else if (event == XMLStreamConstants.END_ELEMENT && inBody
+                            && ("fb3-body".equals(r.getLocalName()) || "body".equals(r.getLocalName()))) {
+                        done = true;
+                        return null;
+                    }
+                }
+                done = true;
+                return null;
+            } catch (XMLStreamException e) {
+                throw new FictionBookException("XML parsing error in FB3 body of " + fileName, e);
+            }
+        }
+
+        @Override
+        public void close() throws XMLStreamException {
+            r.close();
+        }
+    }
+
     private Section parseSection(XMLStreamReader r, String fileName) throws XMLStreamException {
 
         String id = r.getAttributeValue(null, "id");
