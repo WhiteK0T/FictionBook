@@ -54,7 +54,7 @@ public class Fb3Reader {
      */
     public FictionBookDto read(Path file) throws FictionBookException {
         String fileName = InvalidFormatException.extractFileName(file);
-        return build(Fb3Package.open(file, fileName, factory), fileName);
+        return build(Fb3Package.openEager(file, fileName, factory), fileName);
     }
 
     /**
@@ -65,7 +65,7 @@ public class Fb3Reader {
      * @throws FictionBookException при ошибке распаковки или разбора
      */
     public FictionBookDto read(InputStream in) throws FictionBookException {
-        return build(Fb3Package.open(in, "<stream>", factory), "<stream>");
+        return build(Fb3Package.openEager(in, "<stream>", factory), "<stream>");
     }
 
     // ========================================================================

@@ -9,7 +9,6 @@ import org.tehlab.whitek0t.fictionbook.dto.inline.ImageRef;
 import org.tehlab.whitek0t.fictionbook.internal.sanitizer.FictionBookDtoTransformer;
 
 import javax.xml.stream.XMLInputFactory;
-import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -168,9 +167,10 @@ final class Fb3Layout {
             if (!isImagePart(part)) continue;
 
             String id = uniqueId(lastSegment(part), resources);
-            byte[] data = pkg.get(part);
             String ct = imageContentType(part);
-            ResourceDataProvider provider = () -> new ByteArrayInputStream(data);
+            // Ленивый провайдер: байты картинки не загружаются, пока её не запросят
+            // (для ленивого пакета — поток прямо из открытого ZIP-архива).
+            ResourceDataProvider provider = () -> pkg.openPart(part);
             resources.put(id, new Resource(id, ct, provider));
 
             // Возможные формы ссылки на эту картинку в теле:

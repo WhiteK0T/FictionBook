@@ -15,6 +15,7 @@ import org.tehlab.whitek0t.fictionbook.internal.anchor.AnchorIndex;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +27,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Тесты потокового {@link Fb3Streamer}: ленивое чтение description и секций
@@ -286,6 +288,36 @@ class Fb3StreamerTest {
                 }
                 assertThat(s.getResource("cover.png")).isNotNull();
             }
+        }
+
+        @Test
+        @DisplayName("байты картинки читаются из архива по требованию (корректны)")
+        void resourceBytesAreLazilyCorrect() throws Exception {
+            try (FictionBookStreamer s = open()) {
+                Resource pic = s.getResource("pic.png");
+                assertThat(pic).isNotNull();
+                byte[] data;
+                try (InputStream in = pic.dataProvider().getInputStream()) {
+                    data = in.readAllBytes();
+                }
+                // Содержимое fb3/img/pic.png из фикстуры.
+                assertThat(data).isEqualTo(new byte[]{(byte) 0x89, 'P', 'N', 'G', 4, 5, 6});
+            }
+        }
+
+        @Test
+        @DisplayName("после close() ресурс больше не читается (поток шёл из открытого ZIP)")
+        void resourceUnreadableAfterClose() throws Exception {
+            FictionBookStreamer s = open();
+            Resource pic = s.getResource("pic.png");
+            s.close();
+            // Провайдер тянет байты из ZipFile, который закрыт в close() — доказательство
+            // ленивости (eager-копия в памяти читалась бы и после закрытия).
+            assertThatThrownBy(() -> {
+                try (InputStream in = pic.dataProvider().getInputStream()) {
+                    in.readAllBytes();
+                }
+            }).isInstanceOf(RuntimeException.class);
         }
     }
 

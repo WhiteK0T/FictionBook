@@ -11,6 +11,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -92,20 +94,30 @@ final class Fb3BodyParser {
     }
 
     /**
-     * Открывает потоковый курсор по секциям {@code body.xml} (для {@code Fb3Streamer}):
-     * секции верхнего уровня выдаются по одной, без удержания всего дерева тела в памяти.
+     * Открывает потоковый курсор по секциям тела (для {@code Fb3Streamer}): секции верхнего
+     * уровня выдаются по одной, тело не буферизуется целиком — StAX читает прямо из потока
+     * (для ленивого пакета это поток части {@code body.xml}/{@code notes.xml} из ZIP-архива).
      *
-     * @param xml      байты части тела ({@code body.xml} или {@code notes.xml})
+     * @param in       поток части тела; курсор владеет им и закрывает в {@link SectionCursor#close()}
      * @param fileName имя исходного файла (для сообщений об ошибках)
      * @return курсор секций
      * @throws FictionBookException при ошибке инициализации StAX-ридера
      */
-    SectionCursor cursor(byte[] xml, String fileName) throws FictionBookException {
+    SectionCursor cursor(InputStream in, String fileName) throws FictionBookException {
         try {
-            XMLStreamReader r = factory.createXMLStreamReader(new ByteArrayInputStream(xml));
-            return new SectionCursor(r, fileName);
+            XMLStreamReader r = factory.createXMLStreamReader(in);
+            return new SectionCursor(r, in, fileName);
         } catch (XMLStreamException e) {
+            closeQuietly(in);
             throw new FictionBookException("XML parsing error in FB3 body of " + fileName, e);
+        }
+    }
+
+    private static void closeQuietly(InputStream in) {
+        try {
+            in.close();
+        } catch (IOException ignored) {
+            // подавляем — уже в обработке ошибки
         }
     }
 
@@ -118,12 +130,14 @@ final class Fb3BodyParser {
     final class SectionCursor implements AutoCloseable {
 
         private final XMLStreamReader r;
+        private final InputStream in;
         private final String fileName;
         private boolean inBody = false;
         private boolean done = false;
 
-        private SectionCursor(XMLStreamReader r, String fileName) {
+        private SectionCursor(XMLStreamReader r, InputStream in, String fileName) {
             this.r = r;
+            this.in = in;
             this.fileName = fileName;
         }
 
@@ -163,8 +177,12 @@ final class Fb3BodyParser {
         }
 
         @Override
-        public void close() throws XMLStreamException {
-            r.close();
+        public void close() throws XMLStreamException, IOException {
+            try {
+                r.close();
+            } finally {
+                in.close();
+            }
         }
     }
 

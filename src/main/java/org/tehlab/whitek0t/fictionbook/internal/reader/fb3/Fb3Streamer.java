@@ -11,23 +11,25 @@ import org.tehlab.whitek0t.fictionbook.internal.anchor.AnchorIndexBuilder;
 import org.tehlab.whitek0t.fictionbook.internal.parser.stax.Fb2BlockParser;
 
 import javax.xml.stream.XMLInputFactory;
+import java.io.IOException;
 import java.nio.file.Path;
 
 /**
  * Потоковая FB3-реализация {@link FictionBookStreamer}.
  *
- * <p><b>Гарантия:</b> <i>ленивые секции, eager-контейнер.</i> FB3 — это OPC/ZIP-архив
- * с дефлейтом, поэтому seek по нему невозможен и контейнер распаковывается в память
- * целиком ({@link Fb3Package}), как и в {@link Fb3Reader}. Главный выигрыш стримера —
- * не строить разом полное дерево секций (самую тяжёлую часть DTO): {@link #readNextSection()}
- * разбирает и отдаёт по одной секции верхнего уровня из {@code body.xml}, не удерживая
- * предыдущие.</p>
+ * <p><b>Гарантия:</b> <i>ленивые секции и ленивый контейнер.</i> Архив открывается
+ * через {@code ZipFile} ({@link Fb3Package#openLazy}) — части читаются по требованию,
+ * а не разжимаются в память целиком: {@link #readNextSection()} стримит {@code body.xml}
+ * прямо из ZIP и отдаёт по одной секции верхнего уровня, а картинки ({@link #getResource})
+ * читаются из архива лишь при обращении. Контейнер держится открытым до {@link #close()}.</p>
  *
  * <p><b>Ограничения v1</b> (как и у {@code Fb2Streamer}):</p>
  * <ul>
  *   <li>Секции тела сносок отдаются после основных, в одном потоке: {@link Section}
  *       не несёт имени тела.</li>
  *   <li>{@link #buildAnchorIndex()} читает книгу целиком — это не потоковая операция.</li>
+ *   <li>{@link Resource}-ы валидны, пока стример открыт: их данные читаются из ZIP,
+ *       который закрывается в {@link #close()}.</li>
  * </ul>
  */
 public final class Fb3Streamer implements FictionBookStreamer {
@@ -62,7 +64,9 @@ public final class Fb3Streamer implements FictionBookStreamer {
         this.descriptionParser = new Fb3DescriptionParser(factory, blockParser);
         this.bodyParser = new Fb3BodyParser(factory, blockParser);
 
-        this.pkg = Fb3Package.open(file, fileName, factory);
+        // Ленивый контейнер: картинки/тело читаются по требованию из открытого ZIP,
+        // не загружая весь архив в память (закрывается в close()).
+        this.pkg = Fb3Package.openLazy(file, fileName, factory);
         this.layout = Fb3Layout.resolve(pkg, factory);
     }
 
@@ -124,7 +128,11 @@ public final class Fb3Streamer implements FictionBookStreamer {
 
     @Override
     public void close() throws Exception {
-        closeCursor();
+        try {
+            closeCursor();
+        } finally {
+            pkg.close();
+        }
     }
 
     // ========================================================================
@@ -133,12 +141,20 @@ public final class Fb3Streamer implements FictionBookStreamer {
 
     /** Открывает курсор секций для текущей фазы; {@code null}, если соответствующей части нет. */
     private Fb3BodyParser.SectionCursor openCursorForPhase() throws FictionBookException {
-        byte[] bytes = switch (phase) {
-            case MAIN -> pkg.get(layout.bodyPart);
-            case NOTES -> layout.notesPart == null ? null : pkg.get(layout.notesPart);
+        String part = switch (phase) {
+            case MAIN -> layout.bodyPart;
+            case NOTES -> layout.notesPart;
             case DONE -> null;
         };
-        return bytes == null ? null : bodyParser.cursor(bytes, fileName);
+        if (part == null || !pkg.has(part)) {
+            return null;
+        }
+        try {
+            // Тело стримится прямо из части архива — без буферизации body.xml целиком.
+            return bodyParser.cursor(pkg.openPart(part), fileName);
+        } catch (IOException e) {
+            throw new FictionBookException("Failed to open FB3 body part '" + part + "' in " + fileName, e);
+        }
     }
 
     private void advancePhase() {

@@ -166,24 +166,31 @@ org.tehlab.whitek0t.fictionbook/
       первому обращению (они в конце FB2-файла), резолвит по `id` и по `#id`.
       Переиспользование разбора: из `Fb2Reader` выделены `Fb2DescriptionReader` и
       `Fb2BinaryReader`, `Fb2BodyParser.parseSection` стал публичным.
-- [x] **FB3** — eager-контейнер: OPC/ZIP с дефлейтом не допускает seek, поэтому архив
-      распаковывается в память целиком (`Fb3Package`), как и в `Fb3Reader`. Выигрыш
-      стримера — не строить разом полное дерево секций. Секции `body.xml` отдаются
-      лениво курсором `Fb3BodyParser.SectionCursor`, ссылки `<img>` переписываются на
-      якоря `#id` посекционно. OPC-навигация и сбор картинок вынесены в общий
-      `Fb3Layout` (используется и `Fb3Reader`, и `Fb3Streamer`).
+- [x] **FB3** — ленивый контейнер: архив открывается через `ZipFile`
+      (`Fb3Package.openLazy`, random-access), части читаются по требованию и не
+      разжимаются в память разом. `body.xml` стримится прямо из ZIP курсором
+      `Fb3BodyParser.SectionCursor` (без буферизации тела целиком), картинки
+      (`getResource`) читаются из архива лишь при обращении (ленивый
+      `ResourceDataProvider`). Контейнер держится открытым до `close()` — после него
+      `Resource`-ы недоступны. Ссылки `<img>` переписываются на якоря `#id`
+      посекционно. OPC-навигация и сбор картинок — в общем `Fb3Layout` (его же
+      использует `Fb3Reader`, но в **eager**-режиме `Fb3Package.openEager`: при полном
+      чтении DTO переживает контейнер, держать открытый файл нельзя).
 - [x] `buildAnchorIndex()` (оба формата) читает книгу целиком — индекс якорей по
       природе охватывает весь файл, это не потоковая операция.
-- [x] Покрыто `Fb2StreamerTest` (9 тестов) и `Fb3StreamerTest` (10 тестов: description,
-      поток секций основного тела + сносок, картинки/ресурсы, переписывание `<img>`, якоря).
+- [x] Покрыто `Fb2StreamerTest` (9 тестов) и `Fb3StreamerTest` (12 тестов: description,
+      поток секций тела + сносок, картинки/ресурсы, переписывание `<img>`, якоря, а также
+      ленивое чтение байтов из ZIP и недоступность ресурса после `close()`).
 - [ ] Ограничения v1: секции из тела сносок (`<body name="notes">` / FB3 `notes.xml`)
       идут после основных в одном потоке (Section не несёт имени тела).
 
 ### FB3 чтение
 - [x] Fb3Reader (`internal/reader/fb3/`) — чтение FB3 (OPC/ZIP-контейнер) в тот же
       `FictionBookDto`, что и FB2. Прощающий режим, как у FB2-ридера.
-- [x] Fb3Package — распаковка ZIP в память (eager), регистронезависимый доступ к
-      частям, разбор `[Content_Types].xml` (Default/Override → MIME-типы).
+- [x] Fb3Package — две стратегии памяти: `openEager` (весь архив в память, для
+      `Fb3Reader`) и `openLazy` (random-access по `ZipFile`, части по требованию через
+      `openPart`, для `Fb3Streamer`). Регистронезависимый доступ к частям, разбор
+      `[Content_Types].xml` (Default/Override → MIME-типы).
 - [x] OpcRelationships — навигация по `_rels/*.rels` (книга → `description.xml` →
       `body.xml` + картинки), разрешение `Target` относительно каталога части.
 - [x] Fb3Layout — общая раскладка контейнера (резолв частей описания/тела/сносок/обложки
@@ -400,8 +407,8 @@ org.tehlab.whitek0t.fictionbook/
 
 ### Streaming API
 - [ ] AnchorIndex с byte offset для seek в Streaming режиме
-- [ ] Lazy-загрузка бинарников через RandomAccessFile (опционально)
-- [ ] Ленивая распаковка частей FB3-контейнера (сейчас весь архив — в память)
+- [ ] Lazy-загрузка FB2-бинарников через RandomAccessFile (опционально; FB3 уже
+      ленив — `Fb3Package.openLazy`)
 
 ### Дополнительные рендереры
 - [ ] JavaFxRenderer — для настольных читалок
@@ -551,7 +558,7 @@ FictionBookDto clean = custom.sanitize(book);
 3. **PDF/EPUB рендереры**
 4. **CSS в FB3**
 5. **Интеграция с Elasticsearch** — через PlainTextRenderer
-6. **Byte-offset seek** для стримеров (FB2/FB3) и ленивая распаковка частей FB3
+6. **Byte-offset seek** для стримеров (FB2/FB3) — прямой переход по якорям без полного чтения
 
 ---
 
