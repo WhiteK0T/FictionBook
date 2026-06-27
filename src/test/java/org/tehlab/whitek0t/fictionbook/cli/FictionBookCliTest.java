@@ -4,6 +4,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.tehlab.whitek0t.fictionbook.api.FictionBookFormat;
+import org.tehlab.whitek0t.fictionbook.api.FictionBookIO;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -23,6 +25,9 @@ class FictionBookCliTest {
 
     private static final Path SAMPLE =
             Path.of("src", "test", "resources", "books", "fb2", "sample.fb2");
+
+    private static final Path SAMPLE_FB3 =
+            Path.of("src", "test", "resources", "books", "fb3", "sample.fb3");
 
     /** Вызывает package-private {@code run} через рефлексию (метод не публичный). */
     private static Result invoke(String... args) throws Exception {
@@ -277,6 +282,108 @@ class FictionBookCliTest {
             String md = Files.readString(out);
             assertThat(md).contains("*(изображение");
             assertThat(md).doesNotContain("data:image");
+        }
+    }
+
+    @Nested
+    @DisplayName("Книжные форматы (fb2 ↔ fb3)")
+    class BookFormats {
+
+        @Test
+        @DisplayName("FB2 → FB3: на выходе валидный FB3-контейнер")
+        void fb2ToFb3(@TempDir Path dir) throws Exception {
+            Path out = dir.resolve("converted.fb3");
+            Result r = invoke(SAMPLE.toString(), "-f", "fb3", "-o", out.toString());
+
+            assertThat(r.code()).isZero();
+            assertThat(out).exists();
+            assertThat(FictionBookFormat.detect(out)).isEqualTo(FictionBookFormat.FB3);
+            assertThat(FictionBookIO.read(out).description().titleInfo().bookTitle())
+                    .isEqualTo("Образцовый рассказ");
+        }
+
+        @Test
+        @DisplayName("FB3 → FB2: на выходе валидный FB2 (формат выводится из .fb2)")
+        void fb3ToFb2(@TempDir Path dir) throws Exception {
+            Path out = dir.resolve("converted.fb2");
+            Result r = invoke(SAMPLE_FB3.toString(), "-o", out.toString());
+
+            assertThat(r.code()).isZero();
+            assertThat(FictionBookFormat.detect(out)).isEqualTo(FictionBookFormat.FB2);
+            assertThat(FictionBookIO.read(out).description()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("книжный формат нельзя выводить в stdout → код 2")
+        void rejectsStdout() throws Exception {
+            Result r = invoke(SAMPLE.toString(), "-f", "fb2", "-o", "-");
+            assertThat(r.code()).isEqualTo(2);
+            assertThat(r.err()).contains("stdout");
+        }
+    }
+
+    @Nested
+    @DisplayName("Пакетный режим")
+    class Batch {
+
+        @Test
+        @DisplayName("каталог → FB3 в --out-dir: каждый файл конвертируется")
+        void directoryToOutDir(@TempDir Path dir) throws Exception {
+            Path in = Files.createDirectory(dir.resolve("in"));
+            Files.copy(SAMPLE, in.resolve("a.fb2"));
+            Files.copy(SAMPLE, in.resolve("b.fb2"));
+            Path out = dir.resolve("out");
+
+            Result r = invoke(in.toString(), "-f", "fb3", "-d", out.toString());
+
+            assertThat(r.code()).isZero();
+            assertThat(r.err()).contains("Пакет:");
+            assertThat(out.resolve("a.fb3")).exists();
+            assertThat(out.resolve("b.fb3")).exists();
+            assertThat(FictionBookFormat.detect(out.resolve("a.fb3")))
+                    .isEqualTo(FictionBookFormat.FB3);
+        }
+
+        @Test
+        @DisplayName("совпадение имён (fb2+fb3) разводится суффиксом источника")
+        void disambiguatesNameCollision(@TempDir Path dir) throws Exception {
+            Path in = Files.createDirectory(dir.resolve("in"));
+            Files.copy(SAMPLE, in.resolve("book.fb2"));
+            Files.copy(SAMPLE_FB3, in.resolve("book.fb3"));
+            Path out = dir.resolve("out");
+
+            Result r = invoke(in.toString(), "-f", "fb3", "-d", out.toString());
+
+            assertThat(r.code()).isZero();
+            // book.fb2 → book.fb3; book.fb3 (коллизия) → book_fb3.fb3
+            assertThat(out.resolve("book.fb3")).exists();
+            assertThat(out.resolve("book_fb3.fb3")).exists();
+        }
+
+        @Test
+        @DisplayName("несколько файлов → txt рядом с источником")
+        void multipleFilesInPlace(@TempDir Path dir) throws Exception {
+            Path a = dir.resolve("a.fb2");
+            Path b = dir.resolve("b.fb2");
+            Files.copy(SAMPLE, a);
+            Files.copy(SAMPLE, b);
+
+            Result r = invoke(a.toString(), b.toString(), "-f", "txt");
+
+            assertThat(r.code()).isZero();
+            assertThat(dir.resolve("a.txt")).exists();
+            assertThat(dir.resolve("b.txt")).exists();
+        }
+
+        @Test
+        @DisplayName("-o в пакетном режиме → код 2 (нужен --out-dir)")
+        void rejectsOutputInBatch(@TempDir Path dir) throws Exception {
+            Path in = Files.createDirectory(dir.resolve("in"));
+            Files.copy(SAMPLE, in.resolve("a.fb2"));
+
+            Result r = invoke(in.toString(), "-f", "txt", "-o", dir.resolve("x.txt").toString());
+            assertThat(r.code()).isEqualTo(2);
+            assertThat(r.err()).contains("--out-dir");
         }
     }
 }

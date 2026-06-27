@@ -1,6 +1,7 @@
 package org.tehlab.whitek0t.fictionbook.cli;
 
 import org.tehlab.whitek0t.fictionbook.api.BookInfo;
+import org.tehlab.whitek0t.fictionbook.api.FictionBookFormat;
 import org.tehlab.whitek0t.fictionbook.api.FictionBookIO;
 import org.tehlab.whitek0t.fictionbook.dto.FictionBookDto;
 import org.tehlab.whitek0t.fictionbook.dto.Resource;
@@ -14,32 +15,43 @@ import org.tehlab.whitek0t.fictionbook.render.impl.HtmlRenderer;
 import org.tehlab.whitek0t.fictionbook.render.impl.MarkdownRenderer;
 import org.tehlab.whitek0t.fictionbook.render.impl.PlainTextRenderer;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
- * Консольная утилита конвертации книг FB2/FB3 в {@code txt}, {@code html} и {@code md}.
+ * Консольная утилита конвертации книг FB2/FB3.
  *
- * <p>Это единственная точка входа-приложение в проекте-библиотеке: она лишь
- * связывает публичные фасады ({@link FictionBookIO}, {@link BookPlayer},
- * рендереры) и не добавляет новой логики разбора/рендеринга.</p>
+ * <p>Поддержаны два направления вывода:</p>
+ * <ul>
+ *   <li><b>Рендеринг</b> в {@code txt}, {@code html}, {@code md} (через {@link BookPlayer}
+ *       и рендереры);</li>
+ *   <li><b>Книжные форматы</b> {@code fb2}, {@code fb3} — перезапись/конвертация
+ *       {@code fb2↔fb3} через {@link FictionBookIO#write} (с авто-санитизацией).</li>
+ * </ul>
+ *
+ * <p>Поддержан <b>пакетный режим</b>: на вход можно подать каталог (опц. {@code -r})
+ * или несколько файлов; результаты складываются в {@code --out-dir} либо рядом
+ * с каждым источником.</p>
+ *
+ * <p>Это единственная точка входа-приложение в проекте-библиотеке: она лишь связывает
+ * публичные фасады и не добавляет новой логики разбора/рендеринга.</p>
  *
  * <p>Пример:</p>
  * <pre>{@code
- * # FB2 -> текст (по умолчанию рядом с исходником: book.txt)
- * fb book.fb2
- *
- * # FB2 -> HTML с встроенными картинками
- * fb book.fb2 -f html
- *
- * # явный выход и извлечение картинок в отдельную папку
- * fb book.fb2 -o out/book.html --images extract
- *
- * # в stdout (для пайпов)
- * fb book.fb2 -o -
+ * fb book.fb2                       # FB2 -> текст (book.txt)
+ * fb book.fb2 -f html              # FB2 -> HTML с встроенными картинками
+ * fb book.fb3 -f fb2               # FB3 -> FB2 (book.fb2)
+ * fb books/ -f fb3 -d out/         # пакет: все книги каталога -> FB3 в out/
+ * fb book.fb2 -o -                 # в stdout (для пайпов; только txt/html/md)
  * }</pre>
  */
 public final class FictionBookCli {
@@ -49,10 +61,10 @@ public final class FictionBookCli {
     private FictionBookCli() {
     }
 
-    /** Формат вывода. */
-    private enum Target {TXT, HTML, MD}
+    /** Формат вывода: рендеринг (TXT/HTML/MD) или книжный формат (FB2/FB3). */
+    private enum Target {TXT, HTML, MD, FB2, FB3}
 
-    /** Режим обработки картинок при выводе в HTML. */
+    /** Режим обработки картинок при рендеринге в HTML/MD. */
     private enum ImageMode {EMBED, EXTRACT, NONE}
 
     /**
@@ -69,8 +81,8 @@ public final class FictionBookCli {
     }
 
     /**
-     * Выполняет одну конвертацию. Вынесено из {@link #main} ради тестируемости:
-     * потоки вывода передаются явно, а результат — код возврата (0 — успех).
+     * Выполняет конвертацию (одну или пакетную). Вынесено из {@link #main} ради
+     * тестируемости: потоки вывода передаются явно, а результат — код возврата.
      *
      * @param args аргументы командной строки
      * @param out  поток для полезного вывода (например, при {@code -o -})
@@ -79,11 +91,13 @@ public final class FictionBookCli {
      */
     static int run(String[] args, PrintStream out, PrintStream err) {
         // --- Разбор аргументов -------------------------------------------------
-        Path input = null;
+        List<String> positional = new ArrayList<>();
         Path output = null;
+        Path outDir = null;
         Target format = null;
         ImageMode imageMode = ImageMode.EMBED;
         boolean wrapDocument = true;
+        boolean recursive = false;
 
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -107,6 +121,12 @@ public final class FictionBookCli {
                     if (value == null) return 2;
                     output = Path.of(value);
                 }
+                case "-d", "--out-dir" -> {
+                    String value = next(args, ++i, err, arg);
+                    if (value == null) return 2;
+                    outDir = Path.of(value);
+                }
+                case "-r", "--recursive" -> recursive = true;
                 case "--images" -> {
                     String value = next(args, ++i, err, arg);
                     if (value == null) return 2;
@@ -120,39 +140,119 @@ public final class FictionBookCli {
                         printUsage(err);
                         return 2;
                     }
-                    if (input == null) {
-                        input = Path.of(arg);
-                    } else if (output == null) {
-                        output = Path.of(arg);
-                    } else {
-                        err.println("Лишний аргумент: " + arg);
-                        return 2;
-                    }
+                    positional.add(arg);
                 }
             }
         }
 
-        if (input == null) {
+        if (positional.isEmpty()) {
             err.println("Не указан входной файл.");
             printUsage(err);
             return 2;
         }
-        if (!Files.isRegularFile(input)) {
-            err.println("Файл не найден: " + input);
+
+        // Совместимость: устаревшая форма «fb <вход> <выход>» (два позиционных, без -o/-d,
+        // первый — существующий файл, второй — ещё не существующий путь вывода).
+        if (positional.size() == 2 && output == null && outDir == null
+                && Files.isRegularFile(Path.of(positional.get(0)))
+                && !Files.exists(Path.of(positional.get(1)))) {
+            output = Path.of(positional.get(1));
+            positional = List.of(positional.get(0));
+        }
+
+        // --- Раскрытие входов (файлы + каталоги) в список книг -----------------
+        List<Path> books = new ArrayList<>();
+        boolean sawDirectory = false;
+        for (String s : positional) {
+            Path p = Path.of(s);
+            if (Files.isDirectory(p)) {
+                sawDirectory = true;
+                try {
+                    collectBooks(p, recursive, books);
+                } catch (IOException e) {
+                    err.println("Ошибка обхода каталога '" + p + "': " + e.getMessage());
+                    return 1;
+                }
+            } else if (Files.isRegularFile(p)) {
+                books.add(p);
+            } else {
+                err.println("Файл не найден: " + p);
+                return 1;
+            }
+        }
+        if (books.isEmpty()) {
+            err.println("Не найдено книг (.fb2/.fb3) для конвертации.");
             return 1;
         }
 
-        // --- Определяем формат и путь вывода ----------------------------------
+        boolean batch = books.size() > 1 || sawDirectory || outDir != null;
+        return batch
+                ? runBatch(books, outDir, format, imageMode, wrapDocument, output, out, err)
+                : runSingle(books.getFirst(), output, format, imageMode, wrapDocument, out, err);
+    }
+
+    // ========================================================================
+    // Режимы запуска
+    // ========================================================================
+
+    private static int runSingle(Path input, Path output, Target format, ImageMode imageMode,
+                                 boolean wrap, PrintStream out, PrintStream err) {
         boolean toStdout = output != null && output.toString().equals("-");
 
+        // Формат выводим только из имени ВЫХОДА (вход всегда .fb2/.fb3 — он не задаёт цель).
         if (format == null) {
-            format = toStdout ? Target.TXT : inferTarget(output != null ? output : input);
+            format = (output != null && !toStdout) ? inferTarget(output) : Target.TXT;
         }
         if (output == null) {
             output = deriveOutput(input, format);
         }
+        return convertOne(input, output, toStdout, format, imageMode, wrap, out, err);
+    }
 
-        // --- Чтение -----------------------------------------------------------
+    private static int runBatch(List<Path> books, Path outDir, Target format, ImageMode imageMode,
+                                boolean wrap, Path output, PrintStream out, PrintStream err) {
+        if (output != null) {
+            err.println("В пакетном режиме используйте --out-dir, а не -o.");
+            return 2;
+        }
+        Target fmt = format != null ? format : Target.TXT;
+
+        int done = 0;
+        int failed = 0;
+        int skipped = 0;
+        Set<Path> usedDests = new HashSet<>();
+        for (Path book : books) {
+            Path dest = batchOutput(book, outDir, fmt);
+            if (sameFile(dest, book)) {
+                err.println("Пропуск (выход совпадает с источником): " + book);
+                skipped++;
+                continue;
+            }
+            // Разные источники с одинаковым именем (напр. book.fb2 и book.fb3) дали бы
+            // один путь вывода — добавляем расширение источника, чтобы не затирать.
+            if (!usedDests.add(dest.toAbsolutePath().normalize())) {
+                dest = disambiguate(dest, book, fmt);
+                usedDests.add(dest.toAbsolutePath().normalize());
+            }
+            int code = convertOne(book, dest, false, fmt, imageMode, wrap, out, err);
+            if (code == 0) {
+                done++;
+            } else {
+                failed++;
+            }
+        }
+        err.println("Пакет: успешно " + done + ", с ошибками " + failed
+                + (skipped > 0 ? ", пропущено " + skipped : "")
+                + " из " + books.size());
+        return failed == 0 ? 0 : 1;
+    }
+
+    /**
+     * Конвертирует одну книгу. Для {@code txt/html/md} — рендеринг в строку и запись;
+     * для {@code fb2/fb3} — запись DTO через {@link FictionBookIO#write}.
+     */
+    private static int convertOne(Path input, Path output, boolean toStdout, Target format,
+                                  ImageMode imageMode, boolean wrap, PrintStream out, PrintStream err) {
         FictionBookDto book;
         try {
             book = FictionBookIO.read(input);
@@ -161,14 +261,31 @@ public final class FictionBookCli {
             return 1;
         }
 
-        // --- Рендеринг --------------------------------------------------------
+        // Книжные форматы пишутся напрямую (бинарно/потоково), без рендеринга в строку.
+        if (format == Target.FB2 || format == Target.FB3) {
+            if (toStdout) {
+                err.println("Формат " + name(format) + " нельзя выводить в stdout — укажите файл.");
+                return 2;
+            }
+            FictionBookFormat target = format == Target.FB2 ? FictionBookFormat.FB2 : FictionBookFormat.FB3;
+            try {
+                ensureParent(output);
+                FictionBookIO.write(book, output, target);
+            } catch (Exception e) {
+                err.println("Ошибка записи '" + output + "': " + e.getMessage());
+                return 1;
+            }
+            err.println("Готово: " + input + " → " + output + " (" + name(format) + ")");
+            return 0;
+        }
+
         String rendered = switch (format) {
             case TXT -> renderText(book);
-            case HTML -> renderHtml(book, output, toStdout, imageMode, wrapDocument);
+            case HTML -> renderHtml(book, output, toStdout, imageMode, wrap);
             case MD -> renderMarkdown(book, output, toStdout, imageMode);
+            case FB2, FB3 -> throw new IllegalStateException("книжный формат обработан выше");
         };
 
-        // --- Запись -----------------------------------------------------------
         if (toStdout) {
             out.print(rendered);
             if (!rendered.endsWith("\n")) {
@@ -178,10 +295,7 @@ public final class FictionBookCli {
         }
 
         try {
-            Path parent = output.toAbsolutePath().getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
+            ensureParent(output);
             Files.writeString(output, rendered, StandardCharsets.UTF_8);
         } catch (Exception e) {
             err.println("Ошибка записи '" + output + "': " + e.getMessage());
@@ -189,8 +303,7 @@ public final class FictionBookCli {
         }
 
         err.println("Готово: " + input + " → " + output
-                + " (" + format.name().toLowerCase(Locale.ROOT) + ", "
-                + rendered.length() + " симв.)");
+                + " (" + name(format) + ", " + rendered.length() + " симв.)");
         return 0;
     }
 
@@ -334,8 +447,11 @@ public final class FictionBookCli {
             case "txt", "text" -> Target.TXT;
             case "html", "htm" -> Target.HTML;
             case "md", "markdown" -> Target.MD;
+            case "fb2" -> Target.FB2;
+            case "fb3" -> Target.FB3;
             default -> {
-                err.println("Неизвестный формат: " + value + " (ожидается txt, html или md)");
+                err.println("Неизвестный формат: " + value
+                        + " (ожидается txt, html, md, fb2 или fb3)");
                 yield null;
             }
         };
@@ -362,19 +478,76 @@ public final class FictionBookCli {
         if (name.endsWith(".md") || name.endsWith(".markdown")) {
             return Target.MD;
         }
+        if (name.endsWith(".fb2")) {
+            return Target.FB2;
+        }
+        if (name.endsWith(".fb3")) {
+            return Target.FB3;
+        }
         return Target.TXT;
     }
 
     private static Path deriveOutput(Path input, Target format) {
         String base = stripExtension(input.getFileName().toString());
-        String ext = switch (format) {
+        Path target = Path.of(base + extensionOf(format));
+        Path parent = input.toAbsolutePath().getParent();
+        return parent != null ? parent.resolve(target) : target;
+    }
+
+    /** Путь вывода для пакетного режима: в {@code outDir} (если задан), иначе рядом с книгой. */
+    private static Path batchOutput(Path book, Path outDir, Target format) {
+        String name = stripExtension(book.getFileName().toString()) + extensionOf(format);
+        Path dir = outDir != null ? outDir : parentOrCurrent(book);
+        return dir.resolve(name);
+    }
+
+    /** Делает имя вывода уникальным, вставляя расширение источника: {@code book_fb3.fb3}. */
+    private static Path disambiguate(Path dest, Path book, Target format) {
+        String srcName = book.getFileName().toString();
+        int dot = srcName.lastIndexOf('.');
+        String srcExt = dot > 0 ? srcName.substring(dot + 1).toLowerCase(Locale.ROOT) : "src";
+        String alt = stripExtension(dest.getFileName().toString()) + "_" + srcExt + extensionOf(format);
+        return dest.resolveSibling(alt);
+    }
+
+    private static String extensionOf(Target format) {
+        return switch (format) {
             case HTML -> ".html";
             case MD -> ".md";
             case TXT -> ".txt";
+            case FB2 -> ".fb2";
+            case FB3 -> ".fb3";
         };
-        Path parent = input.toAbsolutePath().getParent();
-        Path target = Path.of(base + ext);
-        return parent != null ? parent.resolve(target) : target;
+    }
+
+    private static String name(Target format) {
+        return format.name().toLowerCase(Locale.ROOT);
+    }
+
+    /** Собирает {@code *.fb2}/{@code *.fb3} из каталога (рекурсивно при {@code recursive}). */
+    private static void collectBooks(Path dir, boolean recursive, List<Path> acc) throws IOException {
+        try (Stream<Path> stream = recursive ? Files.walk(dir) : Files.list(dir)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(FictionBookCli::isBook)
+                    .sorted()
+                    .forEach(acc::add);
+        }
+    }
+
+    private static boolean isBook(Path p) {
+        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+        return n.endsWith(".fb2") || n.endsWith(".fb3");
+    }
+
+    private static boolean sameFile(Path a, Path b) {
+        return a.toAbsolutePath().normalize().equals(b.toAbsolutePath().normalize());
+    }
+
+    private static void ensureParent(Path output) throws IOException {
+        Path parent = output.toAbsolutePath().getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
     }
 
     private static String stripExtension(String fileName) {
@@ -389,16 +562,20 @@ public final class FictionBookCli {
 
     private static void printUsage(PrintStream out) {
         out.println("""
-                fictionbook — конвертация книг FB2/FB3 в txt, html и md
+                fictionbook — конвертация книг FB2/FB3 (txt, html, md, fb2, fb3)
 
                 Использование:
-                  fb <вход> [выход] [опции]
+                  fb <вход...> [опции]
+
+                Вход — файл(ы) и/или каталог(и). Для каталога берутся все *.fb2/*.fb3.
 
                 Опции:
-                  -f, --format <txt|html|md>  формат вывода (по умолчанию — по расширению
-                                              выхода, иначе txt)
-                  -o, --output <путь>         файл вывода ('-' — stdout). По умолчанию рядом
-                                              с входом с новым расширением
+                  -f, --format <fmt>          формат вывода: txt | html | md | fb2 | fb3
+                                              (по умолчанию — по расширению выхода, иначе txt)
+                  -o, --output <путь>         файл вывода ('-' — stdout, только txt/html/md).
+                                              По умолчанию рядом с входом с новым расширением
+                  -d, --out-dir <каталог>     каталог вывода для пакетного режима
+                  -r, --recursive             рекурсивный обход входных каталогов
                       --images <режим>        html/md: embed (base64, по умолчанию) |
                                               extract (в папку <имя>_files) | none (без картинок)
                       --no-wrap               html: только фрагмент, без <html>/<head>/<body>
@@ -406,9 +583,10 @@ public final class FictionBookCli {
                   -v, --version               показать версию
 
                 Примеры:
-                  fb book.fb2
+                  fb book.fb2                       # -> book.txt
                   fb book.fb2 -f html
-                  fb book.fb2 -f md -o out/book.md --images extract
-                  fb book.fb2 -o -            # в stdout""");
+                  fb book.fb3 -f fb2                # FB3 -> FB2
+                  fb books/ -f fb3 -d out/ -r       # пакет: каталог -> FB3 в out/
+                  fb book.fb2 -o -                  # в stdout""");
     }
 }

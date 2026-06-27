@@ -74,7 +74,8 @@
 org.tehlab.whitek0t.fictionbook/
 ├── api/                    # Публичные фасады (FictionBookIO, FictionBookFormat,
 │                           #   BookInfo, FictionBookStreamer)
-├── cli/                    # FictionBookCli — конвертер FB2/FB3 → txt/html/md (launcher fb)
+├── cli/                    # FictionBookCli — конвертер FB2/FB3 → txt/html/md/fb2/fb3
+│                           #   (fb2↔fb3, пакетный режим; launcher fb)
 ├── dto/                    # Immutable Records (FictionBookDto, BodyDto, etc.)
 │   ├── description/        # Метаданные
 │   ├── block/              # Блочные элементы (Section, Paragraph, Poem, Table)
@@ -296,14 +297,24 @@ org.tehlab.whitek0t.fictionbook/
       ParagraphStyle, оба рендерера, все режимы `ResourceResolver`)
 
 ### CLI-утилита
-- [x] `cli/FictionBookCli` — консольная конвертация FB2/FB3 → `txt`/`html`/`md`.
-      Единственная точка входа-приложение в проекте-библиотеке: связывает публичные
-      фасады (`FictionBookIO`, `BookInfo`, `BookPlayer`, рендереры), своего парсера/
-      рендерера не вводит (только оркестрирует вызовы существующих).
-- [x] Аргументы: позиционные `<вход> [выход]`, `-f/--format txt|html|md`,
-      `-o/--output` (`-` → stdout), `--images embed|extract|none`, `--no-wrap`
-      (HTML-фрагмент), `-h/--help`, `-v/--version`. Формат выводится из расширения
-      выхода (`.html`/`.md`), иначе `txt`; выход по умолчанию — рядом с входом с новым расширением.
+- [x] `cli/FictionBookCli` — консольная конвертация FB2/FB3 → `txt`/`html`/`md`
+      (рендеринг) и `fb2`/`fb3` (перезапись/конвертация **fb2↔fb3** через
+      `FictionBookIO.write` с авто-санитизацией). Единственная точка входа-приложение
+      в проекте-библиотеке: связывает публичные фасады (`FictionBookIO`, `BookInfo`,
+      `BookPlayer`, рендереры), своего парсера/рендерера не вводит.
+- [x] Аргументы: позиционные входы `<вход...>` (файлы и/или каталоги),
+      `-f/--format txt|html|md|fb2|fb3`, `-o/--output` (`-` → stdout, только txt/html/md),
+      `-d/--out-dir` (каталог вывода для пакета), `-r/--recursive` (обход каталогов),
+      `--images embed|extract|none`, `--no-wrap`, `-h/--help`, `-v/--version`. Формат
+      выводится из расширения выхода (`.html`/`.md`/`.fb2`/`.fb3`), иначе `txt`; выход
+      по умолчанию — рядом с входом с новым расширением.
+- [x] **Пакетный режим**: вход-каталог (опц. `-r`) или несколько файлов → конвертация
+      каждого; результаты в `--out-dir` либо рядом с источником. Защита от перезаписи:
+      пропуск, если выход совпадает с источником; разведение коллизий имён суффиксом
+      источника (`book.fb2`→`book.fb3`, `book.fb3`→`book_fb3.fb3`). Итоговая сводка
+      «успешно/с ошибками/пропущено», код 1 при любой ошибке файла.
+- [x] Книжные форматы (`fb2`/`fb3`) пишутся напрямую (бинарно/потоково), без рендеринга
+      в строку и без вывода в stdout (для них требуется файл).
 - [x] Картинки в HTML/MD: `embed` (base64), `extract` (в папку `<имя>_files`),
       `none` (placeholder; в MD — текстовый `*(изображение: …)*`). При выводе в stdout
       `extract` деградирует до `embed`.
@@ -315,11 +326,12 @@ org.tehlab.whitek0t.fictionbook/
       `applicationName = "fb"`): запуск `./gradlew run --args="…"`, дистрибутив
       `./gradlew installDist` → `build/install/fb/bin/fb`. Новых зависимостей нет
       (ручной разбор аргументов).
-- [x] Покрыто `FictionBookCliTest` (16 тестов: разбор аргументов и коды возврата,
+- [x] Покрыто `FictionBookCliTest` (23 теста: разбор аргументов и коды возврата,
       txt в stdout/файл, html из расширения, `--no-wrap`, режимы картинок
-      embed/extract, md в stdout/файл + embed/none, шапка из метаданных). Картинки
-      конвертируются и инлайновые (`<p><image/></p>`), и блочные (`<image>` прямым
-      ребёнком секции — см. `BlockImage`).
+      embed/extract, md в stdout/файл + embed/none, шапка из метаданных, **fb2↔fb3**
+      round-trip и запрет stdout, **пакетный режим** — каталог/несколько файлов,
+      `--out-dir`, разведение коллизий, запрет `-o`). Картинки конвертируются и
+      инлайновые (`<p><image/></p>`), и блочные (`<image>` прямым ребёнком секции).
 
 ### Тестирование
 - [x] Round-trip фикспоинт-тесты (`Fb2RoundTripTest`: write→read→write байт-в-байт +
@@ -401,9 +413,8 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
 
 ### Инфраструктура
-- [x] CLI-утилита — конвертер FB2/FB3 → txt/html (`cli/FictionBookCli`, см.
-      «Полностью реализовано»). Осталось: запись в FB3 (fb2↔fb3) и пакетный режим.
-- [ ] Каталогизатор — пакетная обработка библиотек
+- [x] CLI-утилита — конвертер FB2/FB3 → txt/html/md/fb2/fb3, включая fb2↔fb3 и
+      пакетный режим (`cli/FictionBookCli`, см. «Полностью реализовано»).
 - [ ] Интеграция с Elasticsearch — через PlainTextRenderer
 - [ ] CI/CD (GitHub Actions)
 - [ ] Maven Central публикация
@@ -541,7 +552,6 @@ FictionBookDto clean = custom.sanitize(book);
 4. **CSS в FB3**
 5. **Интеграция с Elasticsearch** — через PlainTextRenderer
 6. **Byte-offset seek** для стримеров (FB2/FB3) и ленивая распаковка частей FB3
-7. **CLI** (сделан базовый конвертер): запись в FB3 (fb2↔fb3) и пакетный режим
 
 ---
 
