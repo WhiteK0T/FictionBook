@@ -277,6 +277,23 @@ org.tehlab.whitek0t.fictionbook/
       вскрыли NPE в `canResolve`/`contains` на внешней ссылке (`null` id → запрос
       к immutable-мапе) — починено null-проверкой в `contains`.
 
+### Изменяемая модель (Mutable Model)
+- [x] `dto/mutable/` — удобный слой редактирования поверх иммутабельного DTO
+      (вместо ручного пересоздания дерева через `FictionBookDtoTransformer`):
+      `MutableBook` → `MutableBody` → `MutableSection`.
+- [x] `MutableBook.from(dto)` ↔ `toDto()` — round-trip структурно равен исходному
+      DTO (`Resource` переносится по ссылке, порядок `<binary>` сохраняется).
+- [x] ADR: изменяем только «структурный хребет» (book/body/section) — именно его
+      больно править. Листья (`BlockElement`/inline) остаются immutable-записями,
+      их кладут/достают из «живых» списков. Так нет второй параллельной иерархии
+      классов, которую пришлось бы синхронизировать с DTO. `description`/`resources`
+      переносятся как иммутабельные значения (ставятся целиком).
+- [x] Удобные операции: `mainBody()`/`notesBody()`, `addSection`/`addParagraph`/
+      `addEmptyLine`/`addSubSection`, `MutableSection.withTitle(...)`, рекурсивные
+      `findSection(id)` и `removeSection(id)` по всем телам и подсекциям.
+- [x] Покрыто `MutableModelTest` (18 тестов: round-trip на богатом дереве,
+      независимость глубокой копии, редактирование, поиск/удаление, null-проверки).
+
 ### Рендеринг
 - [x] FictionBookRenderer интерфейс (Command Pattern)
 - [x] BookPlayer (с контекстным стеком для ParagraphStyle)
@@ -416,143 +433,19 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] EpubRenderer — генерация EPUB из FB2
 
 ### Улучшения
-- [ ] Mutable Model — для удобного редактирования (вместо пересоздания immutable DTO)
 - [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
 
 ### Инфраструктура
-- [x] CLI-утилита — конвертер FB2/FB3 → txt/html/md/fb2/fb3, включая fb2↔fb3 и
-      пакетный режим (`cli/FictionBookCli`, см. «Полностью реализовано»).
 - [ ] Интеграция с Elasticsearch — через PlainTextRenderer
 - [ ] CI/CD (GitHub Actions)
 - [ ] Maven Central публикация
 
 ---
 
-# Ключевые классы и их назначение
-
-## Публичный API
-
-### FictionBookIO
-Фасад для чтения/записи с auto-detect формата.
-```java
-FictionBookDto book = FictionBookIO.read(Path.of("book.fb2"));
-FictionBookIO.write(book, Path.of("output.fb2"));
-```
-
-### FictionBookFormat
-Enum с методами `detect(Path)` и `fromPath(Path)`.
-
-## DTO (Immutable Records)
-
-### FictionBookDto
-Корневой DTO: `description`, `bodies`, `resources`.
-
-### Resource
-Ресурс (картинка) с ленивым `ResourceDataProvider`:
-```java
-public record Resource(String id, String contentType, ResourceDataProvider dataProvider) {}
-```
-
-## Рендеринг
-
-### BookPlayer
-"Проигрывает" книгу на рендерер, управляя контекстом (стек стилей):
-```java
-BookPlayer player = new BookPlayer(renderer, resourceResolver);
-player.play(book);
-```
-
-### HtmlRenderer
-Builder API, поддержка CSS, ResourceResolver:
-```java
-HtmlRenderer renderer = HtmlRenderer.builder()
-    .wrapInHtmlDocument(true)
-    .resourceResolver(ResourceResolver.base64DataUri())
-    .build();
-```
-
-### PlainTextRenderer
-Статистика, превью:
-```java
-int words = renderer.getWordCount();
-String preview = renderer.getPreview(500);
-```
-
-## Санитайзеры
-
-### SanitizerPipeline
-Цепочка санитайзеров:
-```java
-SanitizerPipeline pipeline = SanitizerPipeline.standard();
-FictionBookDto clean = pipeline.sanitize(book);
-```
-
-### FictionBookDtoTransformer
-Рекурсивный обход immutable DTO:
-```java
-FictionBookDtoTransformer.transform(book)
-    .onParagraph(p -> /* трансформация */)
-    .apply();
-```
-
----
-
-# Примеры использования
-
-## Чтение книги
-```java
-FictionBookDto book = FictionBookIO.read(Path.of("book.fb2"));
-String title = book.description().titleInfo().bookTitle();
-List<Author> authors = book.description().titleInfo().authors();
-```
-
-## Запись книги
-```java
-FictionBookIO.write(book, Path.of("output.fb2")); // Авто-санитизация
-```
-
-## Рендеринг в HTML
-```java
-HtmlRenderer renderer = HtmlRenderer.builder()
-    .wrapInHtmlDocument(true)
-    .title(book.description().titleInfo().bookTitle())
-    .resourceResolver(ResourceResolver.saveToDirectory(imagesDir, "images/"))
-    .build();
-
-BookPlayer player = new BookPlayer(renderer, href -> resolveResource(book, href));
-player.play(book);
-
-Files.writeString(Path.of("book.html"), renderer.getOutput());
-```
-
-## Извлечение plain text
-```java
-PlainTextRenderer renderer = new PlainTextRenderer();
-new BookPlayer(renderer).play(book);
-
-String text = renderer.getOutput();
-int words = renderer.getWordCount();
-String preview = renderer.getPreview(500);
-```
-
-## Работа с санитайзерами
-```java
-SanitizerPipeline custom = SanitizerPipeline.builder()
-    .add(new EmptyParagraphCleaner())
-    .add(new TextNodeMerger())
-    .add(new MyCustomSanitizer())
-    .build();
-
-FictionBookDto clean = custom.sanitize(book);
-```
-
----
-
 # Следующие шаги (приоритеты)
 
 ## Высокий приоритет
-1. **Mutable Model** — для удобного редактирования
-2. **JavaFxRenderer** — для настольных читалок
+1. **JavaFxRenderer** — для настольных читалок
 
 ## Низкий приоритет
 3. **PDF/EPUB рендереры**
