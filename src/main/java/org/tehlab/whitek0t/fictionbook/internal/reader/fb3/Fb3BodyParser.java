@@ -14,6 +14,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -189,6 +190,9 @@ final class Fb3BodyParser {
     private Section parseSection(XMLStreamReader r, String fileName) throws XMLStreamException {
 
         String id = r.getAttributeValue(null, "id");
+        // CSS и пр. атрибуты секции (class, xml:lang, style…) сохраняем в metadata —
+        // задел FB3 под CSS. Читаем до первого r.next(), пока курсор на START_ELEMENT.
+        Map<String, String> metadata = readSectionAttributes(r);
 
         List<BlockElement> title = new ArrayList<>();
         List<BlockElement> content = new ArrayList<>();
@@ -219,7 +223,7 @@ final class Fb3BodyParser {
                                 List.copyOf(title),
                                 List.copyOf(content),
                                 List.copyOf(subSections),
-                                Map.of()
+                                metadata
                         );
                     }
                 }
@@ -229,6 +233,29 @@ final class Fb3BodyParser {
 
         // Прощающий режим: EOF внутри секции
         return new Section(id, List.copyOf(title), List.copyOf(content),
-                List.copyOf(subSections), Map.of());
+                List.copyOf(subSections), metadata);
+    }
+
+    /**
+     * Снимает атрибуты текущего {@code <section>} (кроме {@code id}) в карту метаданных.
+     * Ключ — локальное имя атрибута ({@code class}, {@code xml:lang}, {@code style}…),
+     * порядок документа сохраняется. Должен вызываться, пока курсор на START_ELEMENT.
+     *
+     * @param r ридер, спозиционированный на открывающем теге секции
+     * @return метаданные секции или {@link Map#of()}, если значимых атрибутов нет
+     */
+    private static Map<String, String> readSectionAttributes(XMLStreamReader r) {
+        Map<String, String> metadata = null;
+        for (int i = 0; i < r.getAttributeCount(); i++) {
+            String name = r.getAttributeLocalName(i);
+            if ("id".equals(name)) {
+                continue;
+            }
+            if (metadata == null) {
+                metadata = new LinkedHashMap<>();
+            }
+            metadata.put(name, r.getAttributeValue(i));
+        }
+        return metadata == null ? Map.of() : metadata;
     }
 }

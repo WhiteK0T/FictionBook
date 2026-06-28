@@ -461,6 +461,13 @@ public class Fb3Writer {
         if (section.id() != null && !section.id().isBlank()) {
             xml.writeAttribute("id", section.id());
         }
+        // CSS и прочие атрибуты секции из metadata (class, xml:lang, style…) —
+        // зеркально к Fb3BodyParser.readSectionAttributes. id пишется выше.
+        for (Map.Entry<String, String> attr : section.metadata().entrySet()) {
+            if (!"id".equals(attr.getKey()) && attr.getValue() != null) {
+                xml.writeAttribute(attr.getKey(), attr.getValue());
+            }
+        }
         nl(xml);
 
         if (section.title() != null && !section.title().isEmpty()) {

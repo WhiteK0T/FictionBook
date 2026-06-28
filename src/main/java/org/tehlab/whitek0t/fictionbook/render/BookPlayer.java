@@ -107,7 +107,7 @@ public class BookPlayer {
         }
 
         contextStack.push("section");
-        renderer.startSection(section.id());
+        renderer.startSection(section.id(), section.metadata());
 
         // Заголовок секции
         if (section.title() != null) {

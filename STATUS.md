@@ -202,6 +202,13 @@ org.tehlab.whitek0t.fictionbook/
       `<annotation>`, id/version.
 - [x] Fb3BodyParser — StAX-разбор `body.xml` (`<fb3-body>` → `<section>`),
       переиспользует `Fb2BlockParser` (локальные имена тегов совпадают с FB2).
+- [x] **CSS в FB3**: атрибуты `<section>` (`class`, `xml:lang`, `style`…, кроме `id`)
+      читаются в `Section.metadata` (`readSectionAttributes`) и пишутся обратно
+      `Fb3Writer.writeSection` — задел `metadata` теперь реально round-trip'ится.
+      `HtmlRenderer` выносит `class` секции в HTML через неломающий хук
+      `FictionBookRenderer.startSection(id, attributes)` (дефолт делегирует в
+      старый `startSection(id)`, поэтому прочие рендереры не меняются). Покрыто
+      `Fb3WriterTest` (Css, 3 теста) и `RenderersTest`.
 - [x] FB3-алиасы в `Fb2BlockParser`: inline `<img>` (= `<image>`), блок
       `<blockquote>` (= `<cite>`, с корректным завершающим тегом).
 - [x] Картинки `fb3/img/*` → `Resource` (id = имя файла), ссылки `<img>` (по Id
@@ -432,9 +439,6 @@ org.tehlab.whitek0t.fictionbook/
 - [ ] PdfRenderer — через iText или Apache PDFBox
 - [ ] EpubRenderer — генерация EPUB из FB2
 
-### Улучшения
-- [ ] CSS поддержка в FB3 (задел: `metadata` в `Section`)
-
 ### Инфраструктура
 - [ ] Интеграция с Elasticsearch — через PlainTextRenderer
 - [ ] CI/CD (GitHub Actions)
@@ -448,10 +452,9 @@ org.tehlab.whitek0t.fictionbook/
 1. **JavaFxRenderer** — для настольных читалок
 
 ## Низкий приоритет
-3. **PDF/EPUB рендереры**
-4. **CSS в FB3**
-5. **Интеграция с Elasticsearch** — через PlainTextRenderer
-6. **Byte-offset seek** для стримеров (FB2/FB3) — прямой переход по якорям без полного чтения
+2. **PDF/EPUB рендереры**
+3. **Интеграция с Elasticsearch** — через PlainTextRenderer
+4. **Byte-offset seek** для стримеров (FB2/FB3) — прямой переход по якорям без полного чтения
 
 ---
 

@@ -2,6 +2,8 @@ package org.tehlab.whitek0t.fictionbook.render;
 
 import org.tehlab.whitek0t.fictionbook.dto.Resource;
 
+import java.util.Map;
+
 /**
  * Интерфейс рендерера. Реализации: HTML, PlainText, Java2D, Swing, JavaFX...
  * Использует Command Pattern — книга «проигрывает» себя на рендерер ({@link BookPlayer}),
@@ -62,6 +64,20 @@ public interface FictionBookRenderer {
      * @param id якорь секции или {@code null}
      */
     default void startSection(String id) {
+    }
+
+    /**
+     * Начало секции с её атрибутами-метаданными (задел FB3 под CSS: {@code class},
+     * {@code xml:lang}, {@code style}…). Это основной метод, который вызывает
+     * {@link BookPlayer}; реализация по умолчанию делегирует в {@link #startSection(String)},
+     * поэтому рендереры, которым метаданные не нужны, переопределяют только его.
+     *
+     * @param id         якорь секции или {@code null}
+     * @param attributes атрибуты секции из {@code Section.metadata()} (никогда не {@code null};
+     *                   может быть пустым)
+     */
+    default void startSection(String id, Map<String, String> attributes) {
+        startSection(id);
     }
 
     /** Конец секции. */

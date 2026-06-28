@@ -147,6 +147,29 @@ class RenderersTest {
     }
 
     @Test
+    void htmlRendererShouldRenderSectionCssClassFromMetadata() {
+        HtmlRenderer renderer = new HtmlRenderer();
+        BookPlayer player = new BookPlayer(renderer);
+
+        // FB3 CSS: класс секции лежит в Section.metadata("class") → HTML-атрибут class
+        Section section = new Section("ch1",
+                List.of(),
+                List.of(new Paragraph(List.of(new Text("Текст")))),
+                List.of(),
+                Map.of("class", "epigraph"));
+
+        FictionBookDto book = new FictionBookDto(
+                createMinimalDescription(),
+                List.of(new BodyDto(null, List.of(section))),
+                Map.of());
+
+        player.play(book);
+
+        assertThat(renderer.getOutput())
+                .contains("<section id=\"ch1\" class=\"epigraph\">");
+    }
+
+    @Test
     void plainTextRendererShouldStripFormatting() {
         PlainTextRenderer renderer = new PlainTextRenderer();
         BookPlayer player = new BookPlayer(renderer);

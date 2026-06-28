@@ -108,7 +108,7 @@ class Fb3WriterTest {
             assertThat(d.documentInfo().id()).isEqualTo("11111111-2222-3333-4444-555555555555");
             assertThat(d.documentInfo().version()).isEqualTo("1.0");
 
-            Author a = d.titleInfo().authors().get(0);
+            Author a = d.titleInfo().authors().getFirst();
             assertThat(a.firstName()).isEqualTo("Лев");
             assertThat(a.lastName()).isEqualTo("Толстой");
         }
@@ -116,12 +116,12 @@ class Fb3WriterTest {
         @Test
         @DisplayName("структура тела и вложенность сохраняются")
         void preservesBodyStructure() throws Exception {
-            Section sec = roundTrip(sampleBook()).bodies().get(0).sections().get(0);
+            Section sec = roundTrip(sampleBook()).bodies().getFirst().sections().getFirst();
             assertThat(sec.id()).isEqualTo("sec-1");
             assertThat(sec.subSections()).hasSize(1);
-            assertThat(sec.subSections().get(0).id()).isEqualTo("sec-1-1");
+            assertThat(sec.subSections().getFirst().id()).isEqualTo("sec-1-1");
 
-            boolean hasStrong = ((Paragraph) sec.content().get(0)).elements().stream()
+            boolean hasStrong = ((Paragraph) sec.content().getFirst()).elements().stream()
                     .anyMatch(e -> e instanceof Strong);
             assertThat(hasStrong).isTrue();
             assertThat(sec.content()).anyMatch(b -> b instanceof Cite);
@@ -133,7 +133,7 @@ class Fb3WriterTest {
             FictionBookDto out = roundTrip(sampleBook());
             assertThat(out.resources()).containsKeys("cover.png", "pic.png");
 
-            Section sec = out.bodies().get(0).sections().get(0);
+            Section sec = out.bodies().getFirst().sections().getFirst();
             ImageRef img = firstImage(sec.content().get(1));
             assertThat(img).isNotNull();
             assertThat(img.href()).isEqualTo("#pic.png");
@@ -154,6 +154,60 @@ class Fb3WriterTest {
                 }
             }
             return null;
+        }
+    }
+
+    @Nested
+    @DisplayName("CSS (metadata секции)")
+    class Css {
+
+        private Section styledSection(String id, Map<String, String> metadata, List<Section> subs) {
+            return new Section(id,
+                    List.of(new Paragraph(List.of(new Text("Заголовок")))),
+                    List.of(new Paragraph(List.of(new Text("Текст")))),
+                    subs,
+                    new java.util.LinkedHashMap<>(metadata));
+        }
+
+        private FictionBookDto bookWith(Section section) {
+            return new FictionBookDto(null, List.of(new BodyDto(null, List.of(section))), Map.of());
+        }
+
+        @Test
+        @DisplayName("class/xml:lang/style секции переживают round-trip")
+        void preservesSectionCssMetadata() throws Exception {
+            Section styled = styledSection("sec-1",
+                    Map.of("class", "epigraph", "xml:lang", "en", "style", "color:red"),
+                    List.of());
+
+            Section out = roundTrip(bookWith(styled)).bodies().getFirst().sections().getFirst();
+
+            assertThat(out.metadata())
+                    .containsEntry("class", "epigraph")
+                    .containsEntry("xml:lang", "en")
+                    .containsEntry("style", "color:red");
+        }
+
+        @Test
+        @DisplayName("metadata вложенной секции тоже сохраняется")
+        void preservesNestedSectionMetadata() throws Exception {
+            Section sub = styledSection("sec-1-1", Map.of("class", "note"), List.of());
+            Section parent = styledSection("sec-1", Map.of("class", "chapter"), List.of(sub));
+
+            Section out = roundTrip(bookWith(parent)).bodies().getFirst().sections().getFirst();
+
+            assertThat(out.metadata()).containsEntry("class", "chapter");
+            assertThat(out.subSections().getFirst().metadata()).containsEntry("class", "note");
+        }
+
+        @Test
+        @DisplayName("section без metadata пишется без лишних атрибутов")
+        void sectionWithoutMetadataStaysClean() throws Exception {
+            Section plain = styledSection("sec-1", Map.of(), List.of());
+
+            Section out = roundTrip(bookWith(plain)).bodies().getFirst().sections().getFirst();
+
+            assertThat(out.metadata()).isEmpty();
         }
     }
 
@@ -180,7 +234,7 @@ class Fb3WriterTest {
             FictionBookIO.write(sampleBook(), file);
             FictionBookDto out = FictionBookIO.read(file);
             assertThat(out.description().titleInfo().bookTitle()).isEqualTo("Война и мир");
-            assertThat(out.bodies().get(0).sections()).hasSize(1);
+            assertThat(out.bodies().getFirst().sections()).hasSize(1);
         }
     }
 }

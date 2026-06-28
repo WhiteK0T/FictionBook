@@ -130,10 +130,20 @@ public class HtmlRenderer implements FictionBookRenderer {
 
     @Override
     public void startSection(String id) {
+        startSection(id, java.util.Map.of());
+    }
+
+    @Override
+    public void startSection(String id, java.util.Map<String, String> attributes) {
         ensureDocumentStarted();
         html.append("<section");
         if (id != null && !id.isBlank()) {
             html.append(" id=\"").append(escapeAttr(id)).append("\"");
+        }
+        // FB3 CSS: класс секции из metadata переносится в HTML-атрибут class.
+        String cssClass = attributes == null ? null : attributes.get("class");
+        if (cssClass != null && !cssClass.isBlank()) {
+            html.append(" class=\"").append(escapeAttr(cssClass)).append("\"");
         }
         html.append(">\n");
     }
